@@ -1,13 +1,14 @@
 # Explore Myanmar
 
-A playable, online single-player 3D travel-game vertical slice. The MVP starts a persistent guest in a compact procedural Yangon neighbourhood and supports exploration, NPCs, food, discoveries, photography, sleep, progression, and authoritative onward bus travel to the Bagan “Coming Soon” finale.
+A playable, online single-player 3D travel-game vertical slice. Visitors can keep a secure browser-bound guest journey or create an account without losing that journey.
 
 ## Stack and architecture
 
 - **Next.js / React / TypeScript / Tailwind**, with a responsive overlay UI.
 - **Three.js / React Three Fiber / Drei / Rapier** for client-rendered simulation and collision.
 - **Zustand** for transient UI/game presentation state; server saves are canonical.
-- **PostgreSQL / Prisma** for authoritative production persistence. Development uses PostgreSQL when `DATABASE_URL` is configured and may fall back to serialized JSON persistence under `.data/`.
+- **PostgreSQL / Prisma** for authoritative saves, account identity, and opaque sessions.
+- Node's built-in, versioned **scrypt** password hashing and 256-bit random, HTTP-only session cookies. Raw session tokens are never stored in PostgreSQL.
 - `src/content` owns tuneable destinations, spots, foods, NPCs, quests, accommodation, and routes.
 - `src/components/game` owns rendering and browser simulation; `src/components/ui` owns HUD and modal flows.
 - `src/lib/rules.ts` contains pure clock/progression/state-machine logic; `src/app/api/player` validates and calculates authoritative mutations.
@@ -24,7 +25,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Open `http://localhost:3000`, choose **Play as guest**, click the 3D view, and use WASD, Shift, E, C, M, J, and Escape. Guest IDs stay in localStorage; canonical development saves stay in `.data/players.json`.
+Create the PostgreSQL database configured by `DATABASE_URL`, then run `npx prisma migrate deploy`. Open `http://localhost:3000`, choose **Play as Guest**, click the 3D view, and use WASD, Shift, E, C, M, J, and Escape. Guest and registered sessions use the same HTTP-only cookie and survive normal browser refresh/reopen for 30 days.
 
 ### PostgreSQL / production persistence
 
@@ -32,10 +33,16 @@ Create a PostgreSQL database, set `DATABASE_URL`, then run:
 
 ```bash
 npm run prisma:generate
-npm run prisma:migrate -- --name initial
+npm run prisma:migrate:deploy
 ```
 
-`prisma/schema.prisma` models player snapshots and independently auditable persistent actions. Production requests use serializable Prisma transactions and a row lock so ticket debit and timer creation commit atomically. Production refuses to use the JSON adapter; never deploy that development fallback across multiple instances.
+`prisma/schema.prisma` separates `User` credentials from `Player` save data and independently auditable persistent actions. Existing player rows remain guests after migration. Guest-to-account conversion links the existing player inside the same transaction that creates the user and session, so all progress and timers remain attached.
+
+### Account security
+
+Gameplay routes derive the player exclusively from a random session cookie; client-supplied player IDs are rejected. Cookies are HTTP-only, SameSite=Lax, expire after 30 days, and gain the Secure flag in production. Passwords must be 10–128 characters and are hashed with salted scrypt. Email is normalized to lowercase and uniquely indexed. Use HTTPS in production. Sessions are server-side and can be invalidated by **Log Out**.
+
+Manual account check: play as a guest, earn MMK and start sleep, open **Profile → Save My Journey**, register, and refresh during the timer. Log out after it completes, sign back in, and verify the same journey. Then create a second account in a separate browser profile and verify its MMK, journal, and timers are independent.
 
 ### Complete validation runbook
 
