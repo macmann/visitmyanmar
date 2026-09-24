@@ -101,7 +101,7 @@ function Lighting() {
   const daylight = Math.max(.06, Math.sin(((h - 5) / 14) * Math.PI));
   const night = h < 6 || h >= 19;
   const sunset = h >= 17 && h < 19;
-  return <><color attach="background" args={[night ? PALETTE.night : sunset ? '#d77f63' : '#83b8c1']}/><fog attach="fog" args={[night ? '#17253a' : sunset ? '#b67865' : '#8eaaa0', 40, 88]}/><hemisphereLight args={[night ? '#63759a' : '#c7e5e5', '#554b3f', .35 + daylight * .55]}/><directionalLight castShadow position={[h < 12 ? -20 : 20, 24, 12]} intensity={daylight * 1.6} color={sunset ? '#ffad6c' : '#fff2d0'} shadow-mapSize={[1024, 1024]} shadow-camera-far={80}/>{night && <Stars radius={70} depth={20} count={600} factor={2}/>} {[-14, 8, 19].flatMap(x => [-8, 8].map(z => <Lamp key={`${x}${z}`} x={x} z={z} night={night}/>))}<Lamp x={19} z={-8} night={night}/><Lamp x={12} z={-16} night={night}/><Pagoda night={night}/></>;
+  return <><color attach="background" args={[night ? PALETTE.night : sunset ? '#d77f63' : '#83b8c1']}/><fog attach="fog" args={[night ? '#17253a' : sunset ? '#b67865' : '#8eaaa0', 40, 88]}/><hemisphereLight args={[night ? '#63759a' : '#c7e5e5', '#554b3f', .35 + daylight * .55]}/><directionalLight castShadow position={[h < 12 ? -20 : 20, 24, 12]} intensity={daylight * 1.6} color={sunset ? '#ffad6c' : '#fff2d0'} shadow-mapSize={[1024, 1024]} shadow-camera-far={80}/>{night && <Stars radius={70} depth={20} count={600} factor={2}/>} {[-14, 8, 19].flatMap(x => [-8, 8].map(z => <Lamp key={`${x}${z}`} x={x} z={z} night={night}/>))}<Lamp x={19} z={-8} night={night}/><Lamp x={12} z={-16} night={night}/></>;
 }
 
 type AnimState = 'IDLE' | 'WALK' | 'JOG' | 'INTERACT' | 'PHOTO';
@@ -145,10 +145,29 @@ function Controller() {
   return <RigidBody ref={body} colliders={false} position={pos ?? [-22, 1, 11]} enabledRotations={[false, true, false]} friction={0} linearDamping={1.5} canSleep={false}><CapsuleCollider args={[.65, .38]} position={[0, 1.03, 0]}/><AvatarVisual state={anim}/></RigidBody>;
 }
 
+function PhysicsWorld({ graphics, trees, night }: { graphics: string; trees: number[][]; night: boolean }) {
+  return <Physics gravity={[0, -22, 0]}>
+    <Roads/>
+    {BUILDINGS.map((b, i) => <Building key={i} b={b}/>)}
+    <Pagoda night={night}/>
+    <Market/>
+    <TeaShop/>
+    <BusStation/>
+    <StreetLife/>
+    <Spots/>
+    {trees.slice(0, graphics === 'LOW' ? 7 : trees.length).map(([x, z], i) => <Tree key={i} x={x} z={z} scale={.85 + i % 3 * .12}/>)}
+    <Controller/>
+  </Physics>;
+}
+
 export default function World() {
   const graphics = typeof window === 'undefined' ? 'MEDIUM' : loadSettings().graphics;
   const trees = [[-15, 12], [-16, 19], [7, 10], [20, 7], [29, 17], [24, -8], [12, -10], [29, -20], [9, -22], [-15, -9], [-30, -6], [-30, 26]];
+  const minutes = useGame(s => s.player?.gameMinutes ?? 480);
+  const night = minutes / 60 < 6 || minutes / 60 >= 19;
   return <Canvas shadows={graphics !== 'LOW'} camera={{ position: [-14, 8, 20], fov: 52, near: .1, far: 110 }} gl={{ antialias: graphics !== 'LOW', preserveDrawingBuffer: true }} dpr={graphics === 'HIGH' ? [1, 2] : [1, 1.4]}>
-    <Lighting/><Environment preset="sunset" background={false}/><Physics gravity={[0, -22, 0]}><Roads/>{BUILDINGS.map((b, i) => <Building key={i} b={b}/>)}<Market/><TeaShop/><BusStation/><StreetLife/><Spots/>{trees.slice(0, graphics === 'LOW' ? 7 : trees.length).map(([x, z], i) => <Tree key={i} x={x} z={z} scale={.85 + i % 3 * .12}/>)}<Controller/></Physics>
+    <Lighting/>
+    <Environment preset="sunset" background={false}/>
+    <PhysicsWorld graphics={graphics} trees={trees} night={night}/>
   </Canvas>;
 }
