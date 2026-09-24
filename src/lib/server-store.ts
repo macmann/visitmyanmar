@@ -30,7 +30,6 @@ async function retrySerializable<T>(operation: () => Promise<T>): Promise<T> { f
 export async function getPlayer(id: string): Promise<PlayerSave> {
   if (useJsonAdapter()) return serializedJson(() => { const records = readJson(); const player = resolveAction(records[id] ?? newPlayer(id)); records[id] = player; writeJson(records); return player; });
   return retrySerializable(async () => (await database()).$transaction(async tx => {
-    await tx.player.upsert({ where: { id }, create: { id, save: newPlayer(id) as unknown as Prisma.InputJsonValue }, update: {} });
     await tx.$queryRaw`SELECT id FROM "Player" WHERE id = ${id} FOR UPDATE`;
     const record = await tx.player.findUniqueOrThrow({ where: { id } });
     const stored = parseSave(record.save); const player = resolveAction(stored);
@@ -42,7 +41,6 @@ export async function getPlayer(id: string): Promise<PlayerSave> {
 export async function mutatePlayer(id: string, mutate: Mutator): Promise<PlayerSave> {
   if (useJsonAdapter()) return serializedJson(() => { const records = readJson(); const next = { ...mutate(resolveAction(records[id] ?? newPlayer(id))), updatedAt: new Date().toISOString() }; records[id] = next; writeJson(records); return next; });
   return retrySerializable(async () => (await database()).$transaction(async tx => {
-    await tx.player.upsert({ where: { id }, create: { id, save: newPlayer(id) as unknown as Prisma.InputJsonValue }, update: {} });
     await tx.$queryRaw`SELECT id FROM "Player" WHERE id = ${id} FOR UPDATE`;
     const record = await tx.player.findUniqueOrThrow({ where: { id } });
     const before = resolveAction(parseSave(record.save)); const next = { ...mutate(before), updatedAt: new Date().toISOString() };

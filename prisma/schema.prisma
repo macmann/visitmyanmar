@@ -9,10 +9,36 @@ datasource db {
 
 model Player {
   id        String             @id
+  userId    String?            @unique
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
   save      Json
   actions   PersistentAction[]
+  user      User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sessions  Session[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  displayName  String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  lastLoginAt  DateTime @default(now())
+  player       Player?
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  playerId  String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId])
+  @@index([expiresAt])
 }
 
 model PersistentAction {
