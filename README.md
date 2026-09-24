@@ -7,7 +7,7 @@ A playable, online single-player 3D travel-game vertical slice. The MVP starts a
 - **Next.js / React / TypeScript / Tailwind**, with a responsive overlay UI.
 - **Three.js / React Three Fiber / Drei / Rapier** for client-rendered simulation and collision.
 - **Zustand** for transient UI/game presentation state; server saves are canonical.
-- **PostgreSQL / Prisma schema** for production. The zero-setup development repository uses atomic JSON persistence under `.data/` when a database adapter is not configured.
+- **PostgreSQL / Prisma** for authoritative production persistence. Development uses PostgreSQL when `DATABASE_URL` is configured and may fall back to serialized JSON persistence under `.data/`.
 - `src/content` owns tuneable destinations, spots, foods, NPCs, quests, accommodation, and routes.
 - `src/components/game` owns rendering and browser simulation; `src/components/ui` owns HUD and modal flows.
 - `src/lib/rules.ts` contains pure clock/progression/state-machine logic; `src/app/api/player` validates and calculates authoritative mutations.
@@ -35,15 +35,24 @@ npm run prisma:generate
 npm run prisma:migrate -- --name initial
 ```
 
-`prisma/schema.prisma` models player JSON snapshots and independently auditable persistent actions. The included filesystem repository is intentionally a development adapter; a production deployment should implement the same `getPlayer` / `mutatePlayer` boundary using Prisma transactions and row-level serialization. Never deploy the JSON adapter across multiple instances.
+`prisma/schema.prisma` models player snapshots and independently auditable persistent actions. Production requests use serializable Prisma transactions and a row lock so ticket debit and timer creation commit atomically. Production refuses to use the JSON adapter; never deploy that development fallback across multiple instances.
 
-Other checks:
+### Complete validation runbook
 
 ```bash
-npm test
+npm install
+npm run prisma:generate
+npm run prisma:migrate:deploy
 npm run typecheck
+npm run lint
+npm test
 npm run build
+DEV_TIMER_SCALE=0.001 npm run dev
+# production smoke test (use another port if dev is still running)
+npm run start
 ```
+
+Open `http://localhost:3000`. In development, use Field Kit to fund/unlock test paths and set `DEV_TIMER_SCALE=0.001` **before** starting the server. Exercise discovery, repeat the same discovery/photo to confirm no duplicate reward, buy food, photograph, sleep, refresh while sleeping, wake, buy a bus ticket, refresh while travelling, and reach the Bagan Coming Soon screen. Confirm the ticket is charged once and inspect both browser and server consoles. For a genuine end-to-end progression check, use the controls only to shorten timers—not to bypass progression.
 
 ## Save, authority, and clocks
 
