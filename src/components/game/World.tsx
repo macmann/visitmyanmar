@@ -113,7 +113,7 @@ function AvatarVisual({ state }: { state: AnimState }) {
 }
 
 function Controller() {
-  const body = useRef<RapierRigidBody>(null), keys = useRef(new Set<string>()), yaw = useRef(-.6), pitch = useRef(.48), distance = useRef(9), dragging = useRef(false), state = useRef<AnimState>('IDLE');
+  const body = useRef<RapierRigidBody>(null), keys = useRef(new Set<string>()), yaw = useRef(-.6), pitch = useRef(.38), distance = useRef(9), actualDistance = useRef(9), dragging = useRef(false), state = useRef<AnimState>('IDLE');
   const [anim, setAnim] = useState<AnimState>('IDLE');
   const pos = useGame(s => s.player?.position), setNearby = useGame(s => s.setNearby), cameraMode = useGame(s => s.cameraMode);
   const { camera, gl } = useThree();
@@ -137,9 +137,13 @@ function Controller() {
     if (velocity.current.lengthSq() > .08) { const targetYaw = Math.atan2(velocity.current.x, velocity.current.z); const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, targetYaw, 0)); const old = b.rotation(); const currentQ = new THREE.Quaternion(old.x, old.y, old.z, old.w).slerp(q, 1 - Math.exp(-dt * 12)); b.setRotation(currentQ, true); }
     const nextState: AnimState = cameraMode ? 'PHOTO' : velocity.current.length() < .2 ? 'IDLE' : jogging ? 'JOG' : 'WALK'; if (nextState !== state.current) { state.current = nextState; setAnim(nextState); }
     const player = useGame.getState().player; if (player) player.position = [t.x, t.y, t.z];
-    const focus = new THREE.Vector3(t.x, t.y + 1.25, t.z), horizontal = Math.cos(pitch.current) * distance.current;
-    const desiredCamera = new THREE.Vector3(t.x + Math.sin(yaw.current) * horizontal, t.y + 1.4 + Math.sin(pitch.current) * distance.current, t.z + Math.cos(yaw.current) * horizontal);
-    camera.position.lerp(desiredCamera, 1 - Math.exp(-dt * 9)); camera.lookAt(focus);
+    const focus = new THREE.Vector3(t.x, t.y + 1.35, t.z), orbit = new THREE.Vector3(Math.sin(yaw.current) * Math.cos(pitch.current), Math.sin(pitch.current), Math.cos(yaw.current) * Math.cos(pitch.current));
+    const ray = new THREE.Ray(focus,orbit), hit = new THREE.Vector3(); let safe=distance.current;
+    const blockers=[...BUILDINGS.map(b=>new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(...b.p),new THREE.Vector3(...b.s)).expandByScalar(.35)),new THREE.Box3(new THREE.Vector3(12,-.2,-23),new THREE.Vector3(26,12,-9))];
+    for(const box of blockers){const point=ray.intersectBox(box,hit);if(point)safe=Math.min(safe,Math.max(2.2,point.distanceTo(focus)-.45));}
+    actualDistance.current=THREE.MathUtils.damp(actualDistance.current,safe,safe<actualDistance.current?18:5,dt);
+    const desiredCamera=focus.clone().addScaledVector(orbit,actualDistance.current); camera.position.lerp(desiredCamera,1-Math.exp(-dt*12));
+    const matrix=new THREE.Matrix4().lookAt(camera.position,focus,camera.up), targetRotation=new THREE.Quaternion().setFromRotationMatrix(matrix); camera.quaternion.slerp(targetRotation,1-Math.exp(-dt*16));
     const nearest = SPOTS.map(s => ({ id: s.id, d: Math.hypot(s.position[0] - t.x, s.position[2] - t.z) })).sort((a, c) => a.d - c.d)[0]; setNearby(nearest.d < 3.7 ? nearest.id : null);
   });
   return <RigidBody ref={body} colliders={false} position={pos ?? [-22, 1, 11]} enabledRotations={[false, true, false]} friction={0} linearDamping={1.5} canSleep={false}><CapsuleCollider args={[.65, .38]} position={[0, 1.03, 0]}/><AvatarVisual state={anim}/></RigidBody>;
