@@ -1,0 +1,12 @@
+import { BALANCE, BUS_ROUTE, SPOTS } from '@/content/game';
+import type { PlayerSave } from './types';
+export const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
+export const advanceGameTime=(day:number,minutes:number,delta:number)=>{const total=minutes+delta;return {day:day+Math.floor(total/1440),minutes:((total%1440)+1440)%1440}};
+export const formatGameTime=(minutes:number)=>`${String(Math.floor(minutes/60)).padStart(2,'0')}:${String(Math.floor(minutes%60)).padStart(2,'0')}`;
+export const attractionStatus=(minutes:number,open=360,close=1260)=>minutes<open||minutes>=close?'CLOSED':minutes>=close-60?'CLOSING SOON':'OPEN';
+export const progress=(p:Pick<PlayerSave,'discoveries'|'foods'|'photos'|'talkedTo'>)=>Math.min(100,Math.round((p.discoveries.length/6*40)+(p.foods.length/3*20)+(p.photos.length/3*25)+(p.talkedTo.length/5*15)));
+export const shouldUnlockBagan=(p:PlayerSave)=>progress(p)>=BALANCE.baganUnlockProgress&&p.foods.length>0&&p.photos.length>0&&p.discoveries.includes('shwedagon');
+export const newPlayer=(id:string):PlayerSave=>({id,destination:'YANGON',zone:'Downtown',day:1,gameMinutes:8*60,energy:BALANCE.startingEnergy,mmk:BALANCE.startingMMK,majorState:'EXPLORING',position:[-13,1,-9],discoveries:[],foods:[],photos:[],talkedTo:[],completedQuests:[],baganUnlocked:false,activeAction:null,timeline:[{at:new Date().toISOString(),day:1,text:'Arrived in Yangon with the Travel Fund'}],inventory:['canvas_backpack','sun_hat'],equipped:{BAG:'canvas_backpack',HAT:'sun_hat'},updatedAt:new Date().toISOString()});
+export function resolveAction(p:PlayerSave,now=new Date()):PlayerSave {const a=p.activeAction;if(!a||new Date(a.completesAt)>now)return p;const t=advanceGameTime(p.day,p.gameMinutes,a.gameMinutes);return {...p,day:t.day,gameMinutes:t.minutes,energy:clamp(p.energy+a.energyRecovery,0,100),destination:a.destination??p.destination,majorState:'EXPLORING',activeAction:null,position:a.kind==='SLEEP'?[-13,1,-9]:p.position,timeline:[...p.timeline,{at:now.toISOString(),day:t.day,text:a.kind==='SLEEP'?'Woke refreshed at the guesthouse':`Arrived in ${a.destination}`}],updatedAt:now.toISOString()};}
+export const nearbySpot=(position:[number,number,number])=>SPOTS.map(s=>({...s,d:Math.hypot(s.position[0]-position[0],s.position[2]-position[2])})).sort((a,b)=>a.d-b.d)[0];
+export const canTravel=(p:PlayerSave)=>p.baganUnlocked&&p.mmk>=BUS_ROUTE.price&&p.majorState==='EXPLORING';

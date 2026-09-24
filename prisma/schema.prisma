@@ -1,0 +1,20 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
+model Player {
+  id String @id
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  save Json
+  actions PersistentAction[]
+}
+model PersistentAction {
+  id String @id @default(cuid())
+  playerId String
+  kind String
+  startedAt DateTime
+  completesAt DateTime
+  payload Json
+  resolvedAt DateTime?
+  player Player @relation(fields:[playerId], references:[id], onDelete:Cascade)
+  @@index([playerId, completesAt])
+}
