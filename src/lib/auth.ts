@@ -43,7 +43,12 @@ export async function register(input: Registration, guestPlayerId?: string): Pro
     const user = await tx.user.create({ data: { email: input.email, displayName: input.displayName, passwordHash, lastLoginAt: now } });
     let player;
     if (guestPlayerId) {
-      player = await tx.player.update({ where: { id: guestPlayerId, userId: null }, data: { userId: user.id } });
+      // Serialize claims for this player. Without the row lock, two registrations
+      // could both observe an unclaimed guest before either one updates it.
+      await tx.$queryRaw`SELECT id FROM "Player" WHERE id = ${guestPlayerId} FOR UPDATE`;
+      const guestPlayer = await tx.player.findUnique({ where: { id: guestPlayerId } });
+      if (!guestPlayer || guestPlayer.userId !== null) throw new Error('Invalid guest player');
+      player = await tx.player.update({ where: { id: guestPlayerId }, data: { userId: user.id } });
     } else {
       const id = randomUUID(); player = await tx.player.create({ data: { id, userId: user.id, save: newPlayer(id) as never } });
     }
