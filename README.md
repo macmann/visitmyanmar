@@ -90,3 +90,9 @@ The Field Kit menu exposes development-only MMK, Bagan unlock, and sunset contro
 ## Assumptions
 
 Opening hours and prices are fictional **game data**, not real visitor guidance. The landmark is a respectful, abstract Yangon-inspired garden rather than a factual reconstruction. All MMK is fictional gameplay currency. Real action duration follows the requested 10× conversion; development acceleration is opt-in.
+
+## Playable / Visual Alpha v0.2
+
+Yangon is now an intentionally composed compact district with a guesthouse quarter, tea-shop seating, market lane, crossroads, ticket station, alleys, a hidden garden viewpoint, and a skyline-scale procedural golden pagoda. The third-person controller uses camera-relative WASD movement, smooth acceleration and turning, Shift jogging, drag-to-orbit camera control, and wheel zoom.
+
+The travel journal (`J`), field map (`M`), camera mode (`C`, then Space), contextual interaction (`E`), and settings panel remain presentation layers over the existing server-authoritative economy and persistent sleep/travel state. Graphics and audio preferences are stored locally. Future licensed/commissioned GLBs and audio should be registered in `src/content/assets.ts`; missing production assets are never requested, and procedural scene modules remain the alpha fallback.
