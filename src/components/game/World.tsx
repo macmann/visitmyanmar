@@ -9,6 +9,7 @@ import { PALETTE } from '@/content/assets';
 import { SPOTS } from '@/content/game';
 import { loadSettings } from '@/lib/settings';
 import { attractionStatus } from '@/lib/rules';
+import { interactionTargetAt } from '@/lib/interactions';
 import { useGame } from '@/store/game';
 
 type BoxDef = { p: [number, number, number]; s: [number, number, number]; color?: string; roof?: string; label?: string };
@@ -92,8 +93,8 @@ function StreetLife() {
 }
 
 function Spots() {
-  const nearby = useGame(s => s.nearby);
-  return <>{SPOTS.map(s => <group key={s.id} position={s.position}><mesh position-y={.13} rotation-x={-Math.PI / 2}><ringGeometry args={[1.15, 1.28, 32]}/><meshBasicMaterial color={s.color} transparent opacity={nearby === s.id ? .9 : .18}/></mesh>{nearby === s.id && <Html position={[0, 2.7, 0]} center distanceFactor={13}><div className="world-label">{s.name}</div></Html>}</group>)}</>;
+  const activeTargetId = useGame(s => s.activeInteractionTarget?.id);
+  return <>{SPOTS.map(s => <group key={s.id} position={s.position}><mesh position-y={.13} rotation-x={-Math.PI / 2}><ringGeometry args={[1.15, 1.28, 32]}/><meshBasicMaterial color={s.color} transparent opacity={activeTargetId === s.id ? .9 : .18}/></mesh>{activeTargetId === s.id && <Html position={[0, 2.7, 0]} center distanceFactor={13}><div className="world-label">{s.name}</div></Html>}</group>)}</>;
 }
 
 function Lighting() {
@@ -115,7 +116,7 @@ function AvatarVisual({ state }: { state: AnimState }) {
 function Controller() {
   const body = useRef<RapierRigidBody>(null), keys = useRef(new Set<string>()), yaw = useRef(-.6), pitch = useRef(.38), distance = useRef(9), actualDistance = useRef(9), dragging = useRef(false), state = useRef<AnimState>('IDLE');
   const [anim, setAnim] = useState<AnimState>('IDLE');
-  const pos = useGame(s => s.player?.position), setNearby = useGame(s => s.setNearby), cameraMode = useGame(s => s.cameraMode);
+  const pos = useGame(s => s.player?.position), setActiveInteractionTarget = useGame(s => s.setActiveInteractionTarget), cameraMode = useGame(s => s.cameraMode);
   const { camera, gl } = useThree();
   const velocity = useRef(new THREE.Vector3()), forward = useMemo(() => new THREE.Vector3(), []), right = useMemo(() => new THREE.Vector3(), []);
   useEffect(() => {
@@ -144,7 +145,7 @@ function Controller() {
     actualDistance.current=THREE.MathUtils.damp(actualDistance.current,safe,safe<actualDistance.current?18:5,dt);
     const desiredCamera=focus.clone().addScaledVector(orbit,actualDistance.current); camera.position.lerp(desiredCamera,1-Math.exp(-dt*12));
     const matrix=new THREE.Matrix4().lookAt(camera.position,focus,camera.up), targetRotation=new THREE.Quaternion().setFromRotationMatrix(matrix); camera.quaternion.slerp(targetRotation,1-Math.exp(-dt*16));
-    const nearest = SPOTS.map(s => ({ id: s.id, d: Math.hypot(s.position[0] - t.x, s.position[2] - t.z) })).sort((a, c) => a.d - c.d)[0]; setNearby(nearest.d < 3.7 ? nearest.id : null);
+    setActiveInteractionTarget(interactionTargetAt([t.x, t.y, t.z]));
   });
   return <RigidBody ref={body} colliders={false} position={pos ?? [-22, 1, 11]} enabledRotations={[false, true, false]} friction={0} linearDamping={1.5} canSleep={false}><CapsuleCollider args={[.65, .38]} position={[0, 1.03, 0]}/><AvatarVisual state={anim}/></RigidBody>;
 }
