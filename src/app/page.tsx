@@ -1,0 +1,1 @@
+'use client';import dynamic from 'next/dynamic';const Game=dynamic(()=>import('@/components/game/Game'),{ssr:false,loading:()=><main className="splash"><div className="lotus">✦</div><h1>Explore Myanmar</h1><p>Preparing Yangon…</p></main>});export default function Page(){return <Game/>}
