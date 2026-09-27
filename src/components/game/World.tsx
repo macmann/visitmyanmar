@@ -14,6 +14,7 @@ import { useGame } from '@/store/game';
 import { DEFAULT_SPAWN, isSafeWorldPosition, safeSpawn, WORLD_BOUNDS } from '@/content/world';
 import PlayerAvatar from '@/components/avatar/PlayerAvatar';
 import type { AvatarMotion } from '@/components/avatar/AvatarModel';
+import { CAMERA, MOVEMENT } from '@/content/tuning';
 
 type BoxDef = { p: [number, number, number]; s: [number, number, number]; color?: string; roof?: string; label?: string };
 const BUILDINGS: BoxDef[] = [
@@ -104,9 +105,49 @@ function BusStation() {
   return <RigidBody type="fixed" colliders="cuboid"><group position={[-20, 0, -12]}><mesh position-y={1.15} castShadow><boxGeometry args={[6.5, 2.3, 2.4]}/><meshStandardMaterial color="#c65c45"/></mesh><mesh position={[-1.8, .55, 1.22]}><circleGeometry args={[.55, 16]}/><meshStandardMaterial color="#252c30"/></mesh><mesh position={[1.8, .55, 1.22]}><circleGeometry args={[.55, 16]}/><meshStandardMaterial color="#252c30"/></mesh><mesh position={[0, 1.45, 1.23]}><planeGeometry args={[4.5, .65]}/><meshStandardMaterial color="#a9d4d3"/></mesh></group></RigidBody>;
 }
 
-function StreetLife() {
-  const people = [[-10, 0, 4], [10, 0, 8], [16, 0, 8], [7, 0, -5], [25, 0, 16]] as const;
-  return <>{people.map((p, i) => <group key={i} position={p}><mesh position-y={.9}><capsuleGeometry args={[.22, .75, 5, 8]}/><meshStandardMaterial color={['#b34e3f', '#457b77', '#d49b42', '#725b8e', '#d27757'][i]}/></mesh><mesh position-y={1.65}><sphereGeometry args={[.22, 10, 10]}/><meshStandardMaterial color="#9c6546"/></mesh></group>)}{[[-14, -5], [17, 5], [29, -5]].map(([x, z], i) => <group key={x} position={[x, 0, z]} rotation-y={i ? Math.PI / 2 : 0}><mesh position-y={.55}><boxGeometry args={[3.3, 1.1, 1.55]}/><meshStandardMaterial color={['#527987', '#b65748', '#d5a143'][i]}/></mesh>{[-1, 1].map(v => <mesh key={v} position={[v, .2, .82]} rotation-x={Math.PI / 2}><cylinderGeometry args={[.32, .32, .16, 12]}/><meshStandardMaterial color="#202629"/></mesh>)}</group>)}</>;
+const PEDESTRIAN_ROUTES = [
+  [[-15, 4], [-7, 4], [-7, 10], [-15, 10]], [[8, 8], [18, 8], [18, 12], [8, 12]],
+  [[6, -6], [6, -19], [11, -19], [11, -6]], [[25, 16], [29, 16], [29, 24], [22, 24]],
+  [[-28, -8], [-15, -8], [-15, -3], [-28, -3]], [[-4, 25], [5, 25], [5, 7], [-4, 7]],
+] as const;
+const CLOTHES = ['#b34e3f', '#457b77', '#d49b42', '#725b8e', '#d27757', '#315f82'];
+
+function Pedestrian({ route, offset, color }: { route: readonly (readonly [number, number])[]; offset: number; color: string }) {
+  const ref = useRef<THREE.Group>(null), pauseUntil = useRef(0), waypoint = useRef(offset % route.length);
+  useFrame(({ clock }, dt) => {
+    const person = ref.current; if (!person) return;
+    if (clock.elapsedTime < pauseUntil.current) { person.rotation.y += Math.sin(clock.elapsedTime + offset) * dt * .15; return; }
+    const target = route[waypoint.current], dx = target[0] - person.position.x, dz = target[1] - person.position.z, distance = Math.hypot(dx, dz);
+    if (distance < .15) { waypoint.current = (waypoint.current + 1) % route.length; pauseUntil.current = clock.elapsedTime + .7 + (offset % 3) * .35; return; }
+    const speed = .75 + (offset % 4) * .09, step = Math.min(distance, speed * dt);
+    person.position.x += dx / distance * step; person.position.z += dz / distance * step;
+    person.rotation.y = THREE.MathUtils.damp(person.rotation.y, Math.atan2(dx, dz), 7, dt);
+  });
+  const start = route[offset % route.length];
+  return <group ref={ref} position={[start[0], 0, start[1]]} scale={.94 + (offset % 3) * .035}>
+    <mesh position-y={.92} castShadow><capsuleGeometry args={[.22, .72, 4, 7]}/><meshStandardMaterial color={color}/></mesh>
+    <mesh position-y={1.68} castShadow><sphereGeometry args={[.22, 9, 8]}/><meshStandardMaterial color={offset % 2 ? '#9c6546' : '#bd805d'}/></mesh>
+    <mesh position={[0, 1.86, -.02]}><sphereGeometry args={[.225, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2]}/><meshStandardMaterial color={offset % 3 ? '#27221f' : '#51382a'}/></mesh>
+  </group>;
+}
+
+function MovingVehicle({ lane, reverse = false }: { lane: number; reverse?: boolean }) {
+  const ref = useRef<THREE.Group>(null);
+  useFrame(({ clock }, dt) => {
+    if (!ref.current) return; const player = useGame.getState().player?.position;
+    const blocked = player && Math.abs(player[0] - lane) < 2 && Math.abs(player[2] - ref.current.position.z) < 5;
+    const direction = reverse ? 1 : -1; ref.current.position.z += direction * (blocked ? .2 : 2.1) * dt;
+    if (ref.current.position.z * direction > 34) ref.current.position.z = -34 * direction;
+  });
+  return <group ref={ref} position={[lane, 0, reverse ? -25 : 25]} rotation-y={reverse ? Math.PI : 0}><mesh position-y={.55} castShadow><boxGeometry args={[1.55, 1.05, 3.2]}/><meshStandardMaterial color={reverse ? '#d6a23c' : '#497884'}/></mesh><mesh position={[0, 1, -.2]}><boxGeometry args={[1.35, .55, 1.45]}/><meshStandardMaterial color="#9cc2c2"/></mesh>{[-1, 1].flatMap(x=>[-1,1].map(z=><mesh key={`${x}${z}`} position={[x*.78,.27,z*1.05]} rotation-z={Math.PI/2}><cylinderGeometry args={[.28,.28,.15,10]}/><meshStandardMaterial color="#202629"/></mesh>))}</group>;
+}
+
+function StreetLife({ density }: { density: number }) {
+  const count = density === 0 ? 10 : density === 1 ? 14 : 18;
+  return <>{Array.from({length:count},(_,i)=><Pedestrian key={i} route={PEDESTRIAN_ROUTES[i%PEDESTRIAN_ROUTES.length]} offset={i} color={CLOTHES[i%CLOTHES.length]}/>)}
+    {density > 0 && <><MovingVehicle lane={-2.25}/><MovingVehicle lane={2.25} reverse/></>}
+    {[[-14, -5], [17, 5], [29, -5]].map(([x, z], i) => <group key={x} position={[x, 0, z]} rotation-y={i ? Math.PI / 2 : 0}><mesh position-y={.55}><boxGeometry args={[3.3, 1.1, 1.55]}/><meshStandardMaterial color={['#527987', '#b65748', '#d5a143'][i]}/></mesh></group>)}
+  </>;
 }
 
 function SpotMarker({ spot, active }: { spot: (typeof SPOTS)[number]; active: boolean }) {
@@ -169,8 +210,8 @@ function Controller() {
   useEffect(() => {
     const down = (e: KeyboardEvent) => { const game = useGame.getState(); if (!game.panel && !game.locationId && !game.cameraMode && !game.transitioning) keys.current.add(e.code); }, up = (e: KeyboardEvent) => keys.current.delete(e.code);
     const pointerDown = () => { dragging.current = true; }, pointerUp = () => { dragging.current = false; };
-    const move = (e: PointerEvent) => { if (!dragging.current) return; yaw.current -= e.movementX * .004; pitch.current = THREE.MathUtils.clamp(pitch.current + e.movementY * .003, .18, 1.05); };
-    const wheel = (e: WheelEvent) => { distance.current = THREE.MathUtils.clamp(distance.current + e.deltaY * .008, 5, 13); };
+    const move = (e: PointerEvent) => { if (!dragging.current) return; yaw.current -= e.movementX * .004; pitch.current = THREE.MathUtils.clamp(pitch.current + e.movementY * .003, CAMERA.minPitch, CAMERA.maxPitch); };
+    const wheel = (e: WheelEvent) => { distance.current = THREE.MathUtils.clamp(distance.current + e.deltaY * .008, CAMERA.minDistance, CAMERA.maxDistance); };
     addEventListener('keydown', down); addEventListener('keyup', up); addEventListener('pointerup', pointerUp); addEventListener('pointermove', move); gl.domElement.addEventListener('pointerdown', pointerDown); gl.domElement.addEventListener('wheel', wheel);
     return () => { removeEventListener('keydown', down); removeEventListener('keyup', up); removeEventListener('pointerup', pointerUp); removeEventListener('pointermove', move); gl.domElement.removeEventListener('pointerdown', pointerDown); gl.domElement.removeEventListener('wheel', wheel); };
   }, [gl]);
@@ -194,17 +235,17 @@ function Controller() {
     if (t.y < WORLD_BOUNDS.killY) { recover(true); return; }
     forward.set(-Math.sin(yaw.current), 0, -Math.cos(yaw.current)); right.set(Math.cos(yaw.current), 0, -Math.sin(yaw.current));
     const desired = forward.multiplyScalar(inputZ).add(right.multiplyScalar(inputX)); const jogging = keys.current.has('ShiftLeft') || keys.current.has('ShiftRight');
-    if (desired.lengthSq()) desired.normalize().multiplyScalar(jogging ? 6.3 : 3.6);
-    const blend = 1 - Math.exp(-dt * (desired.lengthSq() ? 11 : 8)); velocity.current.lerp(desired, blend);
+    if (desired.lengthSq()) desired.normalize().multiplyScalar(jogging ? MOVEMENT.jogSpeed : MOVEMENT.walkSpeed);
+    const blend = 1 - Math.exp(-dt * (desired.lengthSq() ? MOVEMENT.acceleration : MOVEMENT.deceleration)); velocity.current.lerp(desired, blend);
     const current = b.linvel(); b.setLinvel({ x: velocity.current.x, y: current.y, z: velocity.current.z }, true);
-    if (velocity.current.lengthSq() > .08) { const targetYaw = Math.atan2(velocity.current.x, velocity.current.z); const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, targetYaw, 0)); const old = b.rotation(); const currentQ = new THREE.Quaternion(old.x, old.y, old.z, old.w).slerp(q, 1 - Math.exp(-dt * 12)); b.setRotation(currentQ, true); }
+    if (velocity.current.lengthSq() > .08) { const targetYaw = Math.atan2(velocity.current.x, velocity.current.z); const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, targetYaw, 0)); const old = b.rotation(); const currentQ = new THREE.Quaternion(old.x, old.y, old.z, old.w).slerp(q, 1 - Math.exp(-dt * MOVEMENT.rotationSpeed)); b.setRotation(currentQ, true); }
     const nextState: AvatarMotion = velocity.current.length() < .2 ? 'IDLE' : jogging && velocity.current.length()>4.2 ? 'JOG' : 'WALK'; if (nextState !== state.current) { state.current = nextState; setAnim(nextState); }
     const player = useGame.getState().player; if (player) player.position = [t.x, t.y, t.z];
-    const focus = new THREE.Vector3(t.x, t.y + 1.35, t.z), orbit = new THREE.Vector3(Math.sin(yaw.current) * Math.cos(pitch.current), Math.sin(pitch.current), Math.cos(yaw.current) * Math.cos(pitch.current));
+    const focus = new THREE.Vector3(t.x, t.y + CAMERA.shoulderHeight, t.z), orbit = new THREE.Vector3(Math.sin(yaw.current) * Math.cos(pitch.current), Math.sin(pitch.current), Math.cos(yaw.current) * Math.cos(pitch.current));
     const ray = new THREE.Ray(focus,orbit), hit = new THREE.Vector3(); let safe=distance.current;
     const blockers=[...BUILDINGS.map(b=>new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(...b.p),new THREE.Vector3(...b.s)).expandByScalar(.35)),new THREE.Box3(new THREE.Vector3(12,-.2,-23),new THREE.Vector3(26,12,-9))];
-    for(const box of blockers){const point=ray.intersectBox(box,hit);if(point)safe=Math.min(safe,Math.max(2.2,point.distanceTo(focus)-.45));}
-    actualDistance.current=THREE.MathUtils.damp(actualDistance.current,safe,safe<actualDistance.current?18:5,dt);
+    for(const box of blockers){const point=ray.intersectBox(box,hit);if(point)safe=Math.min(safe,Math.max(2.2,point.distanceTo(focus)-CAMERA.collisionPadding));}
+    actualDistance.current=THREE.MathUtils.damp(actualDistance.current,safe,safe<actualDistance.current?18:CAMERA.collisionRecovery,dt);
     const desiredCamera=focus.clone().addScaledVector(orbit,actualDistance.current); camera.position.lerp(desiredCamera,1-Math.exp(-dt*12));
     const matrix=new THREE.Matrix4().lookAt(camera.position,focus,camera.up), targetRotation=new THREE.Quaternion().setFromRotationMatrix(matrix); camera.quaternion.slerp(targetRotation,1-Math.exp(-dt*16));
     const candidate=interactionTargetAt([t.x,t.y,t.z]);const known=!candidate||candidate.id==='market'?player?.discoveries.includes('market_revealed'):candidate.id==='shwedagon'?player?.discoveries.includes('landmark_revealed'):candidate.id==='viewpoint'?player?.discoveries.includes('viewpoint_revealed'):true;setActiveInteractionTarget(known?candidate:null);
@@ -223,11 +264,27 @@ function PhysicsWorld({ graphics, trees, night }: { graphics: string; trees: num
     <Market/>
     <TeaShop/>
     <BusStation/>
-    <StreetLife/>
+    <StreetLife density={graphics === 'LOW' ? 0 : graphics === 'HIGH' ? 2 : 1}/>
     <Spots/>
     {trees.slice(0, graphics === 'LOW' ? 7 : trees.length).map(([x, z], i) => <Tree key={i} x={x} z={z} scale={.85 + i % 3 * .12}/>)}
     <Controller/>
   </Physics>;
+}
+
+function PerformanceReporter() {
+  const { gl } = useThree();
+  const samples = useRef<number[]>([]), lastReport = useRef(0);
+  useFrame((_, dt) => {
+    samples.current.push(1 / Math.max(dt, .001));
+    if (samples.current.length > 90) samples.current.shift();
+    if (performance.now() - lastReport.current < 1000) return;
+    lastReport.current = performance.now();
+    const current = useGame.getState().worldDiagnostics;
+    if (!current) return;
+    const memory = gl.info.memory, render = gl.info.render;
+    useGame.getState().setWorldDiagnostics({ ...current, fps: Math.round(samples.current.reduce((a,b)=>a+b,0) / samples.current.length), drawCalls: render.calls, triangles: render.triangles, textures: memory.textures, geometries: memory.geometries });
+  });
+  return null;
 }
 
 export default function World() {
@@ -238,5 +295,6 @@ export default function World() {
   return <Canvas shadows={graphics !== 'LOW'} camera={{ position: [-14, 8, 20], fov: 52, near: .1, far: 110 }} gl={{ antialias: graphics !== 'LOW', preserveDrawingBuffer: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }} dpr={graphics === 'HIGH' ? [1, 2] : [1, 1.4]}>
     <Lighting/>
     <PhysicsWorld graphics={graphics} trees={trees} night={night}/>
+    {process.env.NODE_ENV !== 'production' && <PerformanceReporter/>}
   </Canvas>;
 }

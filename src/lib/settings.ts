@@ -7,9 +7,11 @@ export type GameSettings = {
   music: number;
   ambience: number;
   sfx: number;
+  ui: number;
+  diagnostics: boolean;
 };
 
-export const DEFAULT_SETTINGS: GameSettings = { graphics: 'MEDIUM', master: 80, music: 45, ambience: 70, sfx: 80 };
+export const DEFAULT_SETTINGS: GameSettings = { graphics: 'MEDIUM', master: 80, music: 45, ambience: 70, sfx: 80, ui: 70, diagnostics: false };
 const KEY = 'explore-myanmar-settings-v2';
 
 export function loadSettings(): GameSettings {
