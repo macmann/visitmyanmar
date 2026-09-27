@@ -12,6 +12,8 @@ import { attractionStatus } from '@/lib/rules';
 import { interactionTargetAt } from '@/lib/interactions';
 import { useGame } from '@/store/game';
 import { DEFAULT_SPAWN, isSafeWorldPosition, safeSpawn, WORLD_BOUNDS } from '@/content/world';
+import PlayerAvatar from '@/components/avatar/PlayerAvatar';
+import type { AvatarMotion } from '@/components/avatar/AvatarModel';
 
 type BoxDef = { p: [number, number, number]; s: [number, number, number]; color?: string; roof?: string; label?: string };
 const BUILDINGS: BoxDef[] = [
@@ -156,17 +158,9 @@ function Lighting() {
   return <><color attach="background" args={[sky]}/><fog attach="fog" args={[sky.clone().lerp(new THREE.Color('#829185'), .22), 38, 92]}/>{!night&&<Sky distance={450000} sunPosition={sun} inclination={.49} azimuth={(h - 6) / 24} turbidity={warm > .45 ? 9 : 5} rayleigh={warm > .45 ? 2.4 : 1.3}/>}<hemisphereLight args={[night ? '#62749b' : '#d7edf0', night ? '#18232e' : '#655b46', .35 + daylight * .62]}/><directionalLight castShadow position={sun} intensity={night ? .12 : daylight * 1.85} color={warm > .35 ? '#ffb06c' : '#fff4db'} shadow-mapSize={[1024, 1024]} shadow-camera-left={-35} shadow-camera-right={35} shadow-camera-top={35} shadow-camera-bottom={-35} shadow-camera-near={1} shadow-camera-far={90} shadow-bias={-.0002} shadow-normalBias={.025}/>{night && <Stars radius={70} depth={20} count={600} factor={2}/>} {[-14, 8, 19].flatMap(x => [-8, 8].map(z => <Lamp key={`${x}${z}`} x={x} z={z} night={night}/>))}<Lamp x={19} z={-8} night={night}/><Lamp x={12} z={-16} night={night}/></>;
 }
 
-type AnimState = 'IDLE' | 'WALK' | 'JOG' | 'INTERACT' | 'PHOTO';
-function AvatarVisual({ state }: { state: AnimState }) {
-  const root = useRef<THREE.Group>(null), phase = useRef(0);
-  useFrame((_, dt) => { phase.current += dt * (state === 'JOG' ? 10 : state === 'WALK' ? 6 : 2); if (root.current) root.current.position.y = state === 'IDLE' ? Math.sin(phase.current) * .015 : Math.abs(Math.sin(phase.current)) * .06; });
-  const swing = state === 'JOG' ? .55 : state === 'WALK' ? .32 : .04;
-  return <group ref={root}><mesh castShadow position-y={1.12}><capsuleGeometry args={[.32, .9, 7, 12]}/><meshStandardMaterial color="#b94f3e"/></mesh><mesh castShadow position-y={2.02}><sphereGeometry args={[.3, 16, 16]}/><meshStandardMaterial color="#9d6546"/></mesh><mesh position={[0, 2.32, 0]}><sphereGeometry args={[.31, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2]}/><meshStandardMaterial color="#252d2c"/></mesh><mesh position={[0, 1.15, -.33]}><boxGeometry args={[.62, .78, .2]}/><meshStandardMaterial color="#315b63"/></mesh>{[-1, 1].map(side => <group key={side} rotation-z={side * Math.sin(phase.current) * swing}><mesh position={[side * .45, 1.2, 0]}><capsuleGeometry args={[.1, .62, 5, 8]}/><meshStandardMaterial color="#9d6546"/></mesh><mesh position={[side * .2, .35, 0]}><capsuleGeometry args={[.12, .7, 5, 8]}/><meshStandardMaterial color="#273a43"/></mesh></group>)}</group>;
-}
-
 function Controller() {
-  const body = useRef<RapierRigidBody>(null), keys = useRef(new Set<string>()), yaw = useRef(-.6), pitch = useRef(.38), distance = useRef(9), actualDistance = useRef(9), dragging = useRef(false), state = useRef<AnimState>('IDLE');
-  const [anim, setAnim] = useState<AnimState>('IDLE');
+  const body = useRef<RapierRigidBody>(null), keys = useRef(new Set<string>()), yaw = useRef(-.6), pitch = useRef(.38), distance = useRef(8), actualDistance = useRef(8), dragging = useRef(false), state = useRef<AvatarMotion>('IDLE');
+  const [anim, setAnim] = useState<AvatarMotion>('IDLE');
   const pos = useGame(s => s.player?.position), setActiveInteractionTarget = useGame(s => s.setActiveInteractionTarget), cameraMode = useGame(s => s.cameraMode), recoveryNonce = useGame(s => s.recoveryNonce), devFallNonce = useGame(s => s.devFallNonce);
   const { camera, gl } = useThree();
   const seenRecovery = useRef(recoveryNonce), seenFall = useRef(devFallNonce), diagnosticsAt = useRef(0), recovering = useRef(false);
@@ -203,7 +197,7 @@ function Controller() {
     const blend = 1 - Math.exp(-dt * (desired.lengthSq() ? 11 : 8)); velocity.current.lerp(desired, blend);
     const current = b.linvel(); b.setLinvel({ x: velocity.current.x, y: current.y, z: velocity.current.z }, true);
     if (velocity.current.lengthSq() > .08) { const targetYaw = Math.atan2(velocity.current.x, velocity.current.z); const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, targetYaw, 0)); const old = b.rotation(); const currentQ = new THREE.Quaternion(old.x, old.y, old.z, old.w).slerp(q, 1 - Math.exp(-dt * 12)); b.setRotation(currentQ, true); }
-    const nextState: AnimState = cameraMode ? 'PHOTO' : velocity.current.length() < .2 ? 'IDLE' : jogging ? 'JOG' : 'WALK'; if (nextState !== state.current) { state.current = nextState; setAnim(nextState); }
+    const nextState: AvatarMotion = velocity.current.length() < .2 ? 'IDLE' : jogging && velocity.current.length()>4.2 ? 'JOG' : 'WALK'; if (nextState !== state.current) { state.current = nextState; setAnim(nextState); }
     const player = useGame.getState().player; if (player) player.position = [t.x, t.y, t.z];
     const focus = new THREE.Vector3(t.x, t.y + 1.35, t.z), orbit = new THREE.Vector3(Math.sin(yaw.current) * Math.cos(pitch.current), Math.sin(pitch.current), Math.cos(yaw.current) * Math.cos(pitch.current));
     const ray = new THREE.Ray(focus,orbit), hit = new THREE.Vector3(); let safe=distance.current;
@@ -215,7 +209,8 @@ function Controller() {
     setActiveInteractionTarget(interactionTargetAt([t.x, t.y, t.z]));
     if (performance.now() - diagnosticsAt.current > 500) { diagnosticsAt.current = performance.now(); const p = useGame.getState().player; if (p) useGame.getState().setWorldDiagnostics({ position: [t.x,t.y,t.z], lastSafe: p.lastSafePosition, checkpoint: p.currentCheckpoint, outOfBounds: t.y < WORLD_BOUNDS.killY || t.x < WORLD_BOUNDS.minX || t.x > WORLD_BOUNDS.maxX || t.z < WORLD_BOUNDS.minZ || t.z > WORLD_BOUNDS.maxZ, grounded: t.y >= .9 && t.y < 1.35 }); }
   });
-  return <RigidBody ref={body} colliders={false} position={pos ?? DEFAULT_SPAWN.position} enabledRotations={[false, true, false]} friction={0} linearDamping={1.5} angularDamping={8} canSleep={false} ccd><CapsuleCollider args={[.65, .38]} position={[0, 1.03, 0]}/><AvatarVisual state={anim}/></RigidBody>;
+  const loadout=useGame(s=>s.player!.avatarLoadout);
+  return <RigidBody ref={body} colliders={false} position={pos ?? DEFAULT_SPAWN.position} enabledRotations={[false, true, false]} friction={0} linearDamping={1.5} angularDamping={8} canSleep={false} ccd><CapsuleCollider args={[.65, .38]} position={[0, 1.03, 0]}/><PlayerAvatar loadout={loadout} motion={anim}/></RigidBody>;
 }
 
 function PhysicsWorld({ graphics, trees, night }: { graphics: string; trees: number[][]; night: boolean }) {
