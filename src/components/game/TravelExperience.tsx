@@ -1,0 +1,12 @@
+'use client';
+import { useEffect, useMemo, useState } from 'react';
+import type { PersistentAction } from '@/lib/types';
+import { BUS_ROUTE } from '@/content/game';
+
+const clock=(milliseconds:number)=>{const seconds=Math.max(0,Math.ceil(milliseconds/1000));return `${String(Math.floor(seconds/3600)).padStart(2,'0')}:${String(Math.floor(seconds%3600/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`};
+export default function TravelExperience({action,onVerify,onOpenJournal,onDevComplete}:{action:PersistentAction;onVerify:()=>Promise<unknown>|void;onOpenJournal:()=>void;onDevComplete:()=>Promise<unknown>|void}){
+ const [now,setNow]=useState(Date.now()),[checking,setChecking]=useState(false),[message,setMessage]=useState<string|null>(null);const started=useMemo(()=>Date.parse(action.startedAt),[action.startedAt]),completes=useMemo(()=>Date.parse(action.completesAt),[action.completesAt]),remaining=completes-now,progress=Math.max(0,Math.min(100,(now-started)/Math.max(1,completes-started)*100));
+ useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),500);return()=>window.clearInterval(timer)},[]);
+ useEffect(()=>{if(remaining>0||checking)return;setChecking(true);Promise.resolve(onVerify()).catch(()=>setMessage('Arrival could not be confirmed. Your journey remains safe on the server.')).finally(()=>setChecking(false))},[remaining,checking,onVerify]);
+ return <main className="travel-experience" aria-live="polite"><div className="travel-scene" aria-hidden="true"><div className="travel-window"><i className="sky"/><i className="hills"/><i className="road"/></div><div className="bus-seat"/><div className="travel-bag">🎒</div></div><section className="travel-copy"><div className="eyebrow">ON THE ROAD</div><h1>Yangon → Bagan</h1><p>{BUS_ROUTE.name} · travelling</p><div className="sleep-countdown">{clock(remaining)}</div><p>Expected after ~{BUS_ROUTE.gameHours} game hours</p><div className="sleep-progress"><i style={{width:`${progress}%`}}/></div><small>The countdown uses the server's UTC arrival time and continues while this browser is closed.</small>{message&&<div className="sleep-error" role="alert">{message}</div>}<div className="travel-safe-actions"><button onClick={onOpenJournal}>Journey Journal</button><button disabled={checking} onClick={()=>void onVerify()}>{checking?'Checking…':'Verify with server'}</button></div>{process.env.NODE_ENV!=='production'&&<button className="dev-rest" onClick={()=>void onDevComplete()}>DEV · Complete Travel</button>}</section></main>
+}
