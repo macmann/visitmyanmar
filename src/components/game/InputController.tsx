@@ -8,16 +8,19 @@ const debug = (...args: unknown[]) => {
   if (process.env.NODE_ENV !== 'production') console.log(...args);
 };
 
-function transitionToLocation(locationId: string) {
+async function transitionToLocation(locationId: string) {
   const state = useGame.getState();
   debug('[Interaction] opening location', locationId);
   state.setTransitioning(true);
-  window.setTimeout(() => {
-    const current = useGame.getState();
-    current.setPanel(null);
-    current.setLocation(locationId);
+  try {
+    if (state.player) await api('checkpoint', { position: state.player.position });
+    const player = await api('enterLocation', { locationId });
+    state.setPlayer(player);
     window.setTimeout(() => useGame.getState().setTransitioning(false), 180);
-  }, 260);
+  } catch (error) {
+    state.setTransitioning(false);
+    state.setError(error instanceof Error ? error.message : 'Could not enter location');
+  }
 }
 
 /** The one dispatcher used by both the physical key and the clickable prompt. */
@@ -25,7 +28,7 @@ export function executeInteraction(target: InteractionTarget) {
   debug('[Interaction] target', target);
   debug('[Interaction] dispatch', target.action);
   if (target.action === 'OPEN_LOCATION') {
-    transitionToLocation(target.id);
+    void transitionToLocation(target.id);
     return;
   }
   void api('interact', { target: target.id }).then(player => {
@@ -49,7 +52,7 @@ export default function InputController() {
       }
       if (event.code === 'KeyM' && !state.locationId) state.setPanel(state.panel === 'map' ? null : 'map');
       if (event.code === 'KeyJ') state.setPanel(state.panel === 'journal' ? null : 'journal');
-      if (event.code === 'Escape') { state.setPanel(state.panel ? null : 'menu'); state.setCameraMode(false); }
+      if (event.code === 'Escape') { if (state.locationId) return; state.setPanel(state.panel ? null : 'menu'); state.setCameraMode(false); }
       if (event.code === 'KeyC' && !state.panel && !state.locationId) state.setCameraMode(!state.cameraMode);
     };
     // Capture makes interaction independent of canvas focus and downstream handlers.
