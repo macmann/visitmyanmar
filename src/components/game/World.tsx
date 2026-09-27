@@ -15,6 +15,7 @@ import { DEFAULT_SPAWN, isSafeWorldPosition, safeSpawn, WORLD_BOUNDS } from '@/c
 import PlayerAvatar from '@/components/avatar/PlayerAvatar';
 import type { AvatarMotion } from '@/components/avatar/AvatarModel';
 import { CAMERA, MOVEMENT } from '@/content/tuning';
+import { debugPositionWrite } from '@/lib/position-diagnostics';
 
 type BoxDef = { p: [number, number, number]; s: [number, number, number]; color?: string; roof?: string; label?: string };
 const BUILDINGS: BoxDef[] = [
@@ -220,6 +221,8 @@ function Controller() {
     const b = body.current, player = useGame.getState().player; if (!b || !player || recovering.current) return;
     recovering.current = true;
     const target = isSafeWorldPosition(player.lastSafePosition) ? player.lastSafePosition : safeSpawn(player.currentCheckpoint).position;
+    const old = b.translation(); debugPositionWrite(automatic ? 'FALL_RECOVERY' : 'RESET_POSITION', [old.x, old.y, old.z], [...target]);
+    const diagnostics=useGame.getState().worldDiagnostics;if(diagnostics)useGame.getState().setWorldDiagnostics({...diagnostics,lastWrite:automatic?'FALL_RECOVERY':'RESET_POSITION',lastTeleport:automatic?'FALL_RECOVERY':'RESET_POSITION'});
     b.setTranslation({ x: target[0], y: Math.max(1.1, target[1]), z: target[2] }, true);
     b.setLinvel({ x: 0, y: 0, z: 0 }, true); b.setAngvel({ x: 0, y: 0, z: 0 }, true); b.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true);
     velocity.current.set(0, 0, 0); actualDistance.current = Math.min(distance.current, 6);
@@ -228,7 +231,7 @@ function Controller() {
     setTimeout(() => { recovering.current = false; }, 300);
   };
   useEffect(() => { if (seenRecovery.current !== recoveryNonce) { seenRecovery.current = recoveryNonce; recover(false); } }, [recoveryNonce]);
-  useEffect(() => { if (seenFall.current !== devFallNonce && body.current) { seenFall.current = devFallNonce; body.current.setTranslation({ x: 0, y: WORLD_BOUNDS.killY - 2, z: 0 }, true); } }, [devFallNonce]);
+  useEffect(() => { if (seenFall.current !== devFallNonce && body.current) { seenFall.current = devFallNonce; const old=body.current.translation(),to:[number,number,number]=[0,WORLD_BOUNDS.killY-2,0];debugPositionWrite('DEV_TELEPORT',[old.x,old.y,old.z],to);body.current.setTranslation({x:to[0],y:to[1],z:to[2]},true); } }, [devFallNonce]);
   useFrame((_, dt) => {
     const b = body.current; if (!b) return;
     const t = b.translation(), inputX = Number(keys.current.has('KeyD')) - Number(keys.current.has('KeyA')), inputZ = Number(keys.current.has('KeyW')) - Number(keys.current.has('KeyS'));
@@ -240,7 +243,7 @@ function Controller() {
     const current = b.linvel(); b.setLinvel({ x: velocity.current.x, y: current.y, z: velocity.current.z }, true);
     if (velocity.current.lengthSq() > .08) { const targetYaw = Math.atan2(velocity.current.x, velocity.current.z); const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, targetYaw, 0)); const old = b.rotation(); const currentQ = new THREE.Quaternion(old.x, old.y, old.z, old.w).slerp(q, 1 - Math.exp(-dt * MOVEMENT.rotationSpeed)); b.setRotation(currentQ, true); }
     const nextState: AvatarMotion = velocity.current.length() < .2 ? 'IDLE' : jogging && velocity.current.length()>4.2 ? 'JOG' : 'WALK'; if (nextState !== state.current) { state.current = nextState; setAnim(nextState); }
-    const player = useGame.getState().player; if (player) player.position = [t.x, t.y, t.z];
+    const player = useGame.getState().player; if (player) { const old:[number,number,number]=[...player.position]; player.position=[t.x,t.y,t.z];debugPositionWrite('PHYSICS_MOVEMENT',old,player.position); }
     const focus = new THREE.Vector3(t.x, t.y + CAMERA.shoulderHeight, t.z), orbit = new THREE.Vector3(Math.sin(yaw.current) * Math.cos(pitch.current), Math.sin(pitch.current), Math.cos(yaw.current) * Math.cos(pitch.current));
     const ray = new THREE.Ray(focus,orbit), hit = new THREE.Vector3(); let safe=distance.current;
     const blockers=[...BUILDINGS.map(b=>new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(...b.p),new THREE.Vector3(...b.s)).expandByScalar(.35)),new THREE.Box3(new THREE.Vector3(12,-.2,-23),new THREE.Vector3(26,12,-9))];
@@ -249,7 +252,7 @@ function Controller() {
     const desiredCamera=focus.clone().addScaledVector(orbit,actualDistance.current); camera.position.lerp(desiredCamera,1-Math.exp(-dt*12));
     const matrix=new THREE.Matrix4().lookAt(camera.position,focus,camera.up), targetRotation=new THREE.Quaternion().setFromRotationMatrix(matrix); camera.quaternion.slerp(targetRotation,1-Math.exp(-dt*16));
     const candidate=interactionTargetAt([t.x,t.y,t.z]);const known=!candidate||candidate.id==='market'?player?.discoveries.includes('market_revealed'):candidate.id==='shwedagon'?player?.discoveries.includes('landmark_revealed'):candidate.id==='viewpoint'?player?.discoveries.includes('viewpoint_revealed'):true;setActiveInteractionTarget(known?candidate:null);
-    if (performance.now() - diagnosticsAt.current > 500) { diagnosticsAt.current = performance.now(); const p = useGame.getState().player; if (p) useGame.getState().setWorldDiagnostics({ position: [t.x,t.y,t.z], lastSafe: p.lastSafePosition, checkpoint: p.currentCheckpoint, outOfBounds: t.y < WORLD_BOUNDS.killY || t.x < WORLD_BOUNDS.minX || t.x > WORLD_BOUNDS.maxX || t.z < WORLD_BOUNDS.minZ || t.z > WORLD_BOUNDS.maxZ, grounded: t.y >= .9 && t.y < 1.35 }); }
+    if (performance.now()-diagnosticsAt.current>500){diagnosticsAt.current=performance.now();const store=useGame.getState(),p=store.player,previous=store.worldDiagnostics;if(p)store.setWorldDiagnostics({position:[t.x,t.y,t.z],visual:[t.x,t.y,t.z],lastSaved:previous?.lastSaved??p.lastSafePosition,lastSafe:p.lastSafePosition,lastWrite:'PHYSICS_MOVEMENT',lastTeleport:previous?.lastTeleport??'NONE',checkpoint:p.currentCheckpoint,outOfBounds:t.y<WORLD_BOUNDS.killY||t.x<WORLD_BOUNDS.minX||t.x>WORLD_BOUNDS.maxX||t.z<WORLD_BOUNDS.minZ||t.z>WORLD_BOUNDS.maxZ,grounded:t.y>=.9&&t.y<1.35});}
   });
   const loadout=useGame(s=>s.player!.avatarLoadout);
   return <RigidBody ref={body} colliders={false} position={pos ?? DEFAULT_SPAWN.position} enabledRotations={[false, true, false]} friction={0} linearDamping={1.5} angularDamping={8} canSleep={false} ccd><CapsuleCollider args={[.65, .38]} position={[0, 1.03, 0]}/><PlayerAvatar loadout={loadout} motion={anim}/></RigidBody>;
