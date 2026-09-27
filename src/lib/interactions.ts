@@ -13,14 +13,16 @@ export type InteractionTarget = {
   action: InteractionAction;
 };
 
-export const INTERACTION_DISTANCE = 3.7;
+// A little wider than the avatar/building collision margin so standing directly
+// in front of a marked entrance always activates it.
+export const INTERACTION_DISTANCE = 4.5;
 
 export function interactionTargetAt(position: [number, number, number]): InteractionTarget | null {
   const nearest = SPOTS
     .map(spot => ({ spot, distance: Math.hypot(spot.position[0] - position[0], spot.position[2] - position[2]) }))
     .sort((a, b) => a.distance - b.distance)[0];
 
-  if (!nearest || nearest.distance >= INTERACTION_DISTANCE) return null;
+  if (!nearest || nearest.distance > INTERACTION_DISTANCE) return null;
 
   return {
     id: nearest.spot.id,
