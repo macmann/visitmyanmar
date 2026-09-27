@@ -9,11 +9,37 @@ A playable, online single-player 3D travel-game vertical slice. Visitors can kee
 - **Zustand** for transient UI/game presentation state; server saves are canonical.
 - **PostgreSQL / Prisma** for authoritative saves, account identity, and opaque sessions.
 - Node's built-in, versioned **scrypt** password hashing and 256-bit random, HTTP-only session cookies. Raw session tokens are never stored in PostgreSQL.
-- `src/content` owns tuneable destinations, spots, foods, NPCs, quests, accommodation, and routes.
+- `src/content` owns tuneable destinations, spots, foods, provider-neutral NPCs, quests, accommodation, and routes.
 - `src/components/game` owns rendering and browser simulation; `src/components/ui` owns HUD and modal flows.
 - `src/lib/rules.ts` contains pure clock/progression/state-machine logic; `src/app/api/player` validates and calculates authoritative mutations.
 
-No multiplayer, payments, live ads, or AI dialogue are included.
+No multiplayer, payments, or live ads are included. Optional AI local dialogue is server-side and always has an authored fallback.
+
+## Provider-agnostic AI locals
+
+NPC and quest code calls `GameLLMService`, which calls the single provider factory and normalizes OpenAI and DeepSeek into the same dialogue/intent/usage contract. Provider adapters alone understand remote API formats. Gameplay treats every model response as untrusted: intents are allowlisted and checked against the NPC, target, and active objective; models cannot mutate MMK, energy, inventory, travel, unlocks, or quest state. Provider errors, timeouts, malformed output, and missing credentials return authored dialogue—there is no automatic paid-provider failover.
+
+Configure **DeepSeek**:
+
+```dotenv
+LLM_PROVIDER=deepseek
+LLM_MODEL=deepseek-flash
+DEEPSEEK_API_KEY=your-server-only-key
+```
+
+Configure **OpenAI** without changing gameplay code:
+
+```dotenv
+LLM_PROVIDER=openai
+LLM_MODEL=gpt-5.6-luna
+OPENAI_API_KEY=your-server-only-key
+```
+
+Provider names are case-normalized. An invalid provider produces a clear server diagnostic and fallback mode; it never selects another provider. To disable API dialogue, omit `LLM_PROVIDER` or the selected provider's key. Optional `LLM_TIMEOUT_MS` and `LLM_MAX_OUTPUT_TOKENS` limit latency and spend. Keys have no `NEXT_PUBLIC_` prefix and are never returned to the browser. In development, authenticated `GET/POST /api/ai/diagnostic` reports safe configuration and performs a small provider test; production returns 404.
+
+To add a provider, implement `LLMProvider` under `src/lib/ai/providers`, normalize output and usage there, add its server credential validation, and add exactly one case to `createLLMProvider`. Game and NPC modules must remain unchanged. To add an AI NPC, add a data-only entry to `src/content/ai-npcs.ts`, give it curated scopes, authored fallbacks, suggested questions, and explicit intent targets, then associate its location with a `TALK` action. Curated entries in `src/lib/ai/knowledge.ts` are deliberately small and retrieval-based so they can later be replaced by RAG without changing NPC code.
+
+NPC memory stores only compact provider-neutral relationship facts, scoped by `playerId + npcId`; no provider response/conversation IDs or unbounded raw transcripts are authoritative. `countryCode` is reserved as an optional, user-selected profile field and must never be inferred. Future Explorer Score/Level, badges, destination completion, discoveries, foods tried, photo challenges, and stories can consume validated unique game events—not conversation count—preventing dialogue farming. The same player-scoped model can later support display name, country flag, avatar, and Explorer Level in multiplayer without implementing multiplayer now.
 
 ## Run locally
 
