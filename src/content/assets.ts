@@ -20,6 +20,20 @@ export const ASSETS = {
   bus: { path: '/assets/vehicles/yangon_bus.glb', scale: 1, collider: 'cuboid' },
 } satisfies Record<string, AssetDefinition>;
 
+export const ASSET_REGISTRY = {
+  BUILDINGS: { downtownBlock:{status:'PLACEHOLDER',path:'/assets/buildings/downtown-block.glb'}, teaShop:{status:'PLACEHOLDER',path:ASSETS.teaShop.path} },
+  SHOPFRONTS: { marketArcade:{status:'PLACEHOLDER',path:'/assets/buildings/market-arcade.glb'} },
+  ROADS: { cityRoad:{status:'TEMP',path:'/assets/textures/city-road.ktx2'} },
+  VEGETATION: { tamarind:{status:'PLACEHOLDER',path:'/assets/vegetation/tamarind.glb'} },
+  VEHICLES: { cityBus:{status:'PLACEHOLDER',path:ASSETS.bus.path}, taxi:{status:'PLACEHOLDER',path:'/assets/vehicles/taxi.glb'} },
+  STREET_PROPS: { bench:{status:'PLACEHOLDER',path:'/assets/props/bench.glb'}, lamp:{status:'PLACEHOLDER',path:'/assets/props/lamp.glb'} },
+  MARKET: { stall:{status:'PLACEHOLDER',path:ASSETS.marketStall.path} },
+  FOOD: { mohinga:{status:'FINAL',path:'/assets/foods/mohinga.webp'} },
+  LANDMARKS: { pagodaSilhouette:{status:'PLACEHOLDER',path:ASSETS.heroPagoda.path} },
+  NPC: { traveler:{status:'PLACEHOLDER',path:ASSETS.player.path} },
+  SIGNS: { reviewedBilingual:{status:'TEMP',path:'/assets/textures/reviewed-signs.ktx2'} },
+} as const;
+
 export const AUDIO = {
   city: '/assets/audio/ambient-city.ogg',
   market: '/assets/audio/market.ogg',

@@ -4,7 +4,7 @@ import { newPlayer } from '../src/lib/rules';
 
 describe('player recovery and Yangon boundaries', () => {
   it('defines every Yangon recovery checkpoint centrally above valid ground', () => {
-    expect(Object.keys(SAFE_SPAWNS)).toEqual(['YANGON_DEFAULT', 'HOTEL', 'TEA_HOUSE', 'MARKET', 'LANDMARK', 'BUS_STATION']);
+    expect(Object.keys(SAFE_SPAWNS)).toEqual(['YANGON_DEFAULT', 'HOTEL', 'TEA_HOUSE', 'MARKET', 'DOWNTOWN', 'SULE', 'BOGYOKE', 'LANDMARK', 'KANDAWGYI', 'WATERFRONT', 'BUS_STATION']);
     for (const spawn of Object.values(SAFE_SPAWNS)) expect(isSafeWorldPosition(spawn.position)).toBe(true);
   });
 

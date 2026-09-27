@@ -15,18 +15,19 @@ import { DEFAULT_SPAWN, isSafeWorldPosition, safeSpawn, WORLD_BOUNDS } from '@/c
 import PlayerAvatar from '@/components/avatar/PlayerAvatar';
 import type { AvatarMotion } from '@/components/avatar/AvatarModel';
 import { CAMERA, MOVEMENT } from '@/content/tuning';
+import { loadedZonesAt, YANGON_ZONES } from '@/content/yangon';
 import { debugPositionWrite } from '@/lib/position-diagnostics';
 
 type BoxDef = { p: [number, number, number]; s: [number, number, number]; color?: string; roof?: string; label?: string };
 const BUILDINGS: BoxDef[] = [
-  { p: [-24, 4, 16], s: [10, 8, 8], color: PALETTE.cream, roof: PALETTE.roof, label: 'GOLDEN TAMARIND' },
-  { p: [-24, 5, 4], s: [9, 10, 9], color: '#c87d62' }, { p: [-24, 4, -5], s: [9, 8, 7], color: '#e1b174' },
-  { p: [-8, 3, 12], s: [9, 6, 7], color: PALETTE.teal, label: 'MORNING STAR · လက်ဖက်ရည်' },
-  { p: [4, 4, 16], s: [8, 8, 8], color: '#d48866', label: 'GENERAL GOODS' },
-  { p: [25, 4, 10], s: [8, 8, 11], color: '#dfb279' }, { p: [26, 5, -1], s: [8, 10, 8], color: '#8aa19a' },
-  { p: [4, 4, -17], s: [9, 8, 7], color: '#be7967' }, { p: [-7, 5, -18], s: [9, 10, 7], color: '#d8aa72' },
-  { p: [-24, 3.5, -17], s: [11, 7, 8], color: '#6e8791', label: 'YANGON ROAD · TICKETS' },
-  { p: [29, 3.5, 22], s: [7, 7, 7], color: '#b56e59' },
+  { p: [-74, 4, 16], s: [10, 8, 8], color: PALETTE.cream, roof: PALETTE.roof, label: 'GOLDEN TAMARIND' },
+  { p: [-74, 5, 4], s: [9, 10, 9], color: '#c87d62' }, { p: [-74, 4, -5], s: [9, 8, 7], color: '#e1b174' },
+  { p: [-58, 3, 12], s: [9, 6, 7], color: PALETTE.teal, label: 'MORNING STAR · လက်ဖက်ရည်' },
+  { p: [-26, 4, 16], s: [8, 8, 8], color: '#d48866', label: 'GENERAL GOODS' },
+  { p: [-15, 4, 10], s: [8, 8, 11], color: '#dfb279' }, { p: [-14, 5, -1], s: [8, 10, 8], color: '#8aa19a' },
+  { p: [-26, 4, -17], s: [9, 8, 7], color: '#be7967' }, { p: [-57, 5, -18], s: [9, 10, 7], color: '#d8aa72' },
+  { p: [-74, 3.5, -17], s: [11, 7, 8], color: '#6e8791', label: 'YANGON ROAD · TICKETS' },
+  { p: [-11, 3.5, 22], s: [7, 7, 7], color: '#b56e59' },
 ];
 
 function Building({ b }: { b: BoxDef }) {
@@ -52,16 +53,14 @@ function Lamp({ x, z, night }: { x: number; z: number; night: boolean }) {
 }
 
 function Roads() {
+  const vertical=[-51,-18,12,38,62], horizontal=[-76,-48,-18,8,38,62];
   return <RigidBody type="fixed" colliders={false}>
-    <CuboidCollider args={[35, .1, 35]} position={[0, -.1, 0]}/>
-    <mesh receiveShadow rotation-x={-Math.PI / 2}><planeGeometry args={[70, 70]}/><meshStandardMaterial color="#647d5d"/></mesh>
-    <mesh position={[0, .025, 0]} receiveShadow><boxGeometry args={[10, .08, 70]}/><meshStandardMaterial color={PALETTE.road}/></mesh>
-    <mesh position={[0, .03, 0]} rotation-y={Math.PI / 2} receiveShadow><boxGeometry args={[9, .09, 70]}/><meshStandardMaterial color="#454b4d"/></mesh>
-    {[-6, 6].map(x => <mesh key={x} position={[x, .09, 0]}><boxGeometry args={[2, .16, 70]}/><meshStandardMaterial color={PALETTE.sidewalk}/></mesh>)}
-    {[-5.5, 5.5].map(z => <mesh key={z} position={[0, .095, z]}><boxGeometry args={[70, .17, 2]}/><meshStandardMaterial color={PALETTE.sidewalk}/></mesh>)}
-    {Array.from({ length: 10 }).map((_, i) => <mesh key={i} position={[0, .1, -31 + i * 7]}><boxGeometry args={[.14, .04, 3.2]}/><meshStandardMaterial color={PALETTE.roadLine}/></mesh>)}
-    {Array.from({ length: 10 }).map((_, i) => <mesh key={i} position={[-31 + i * 7, .105, 0]}><boxGeometry args={[3.2, .04, .14]}/><meshStandardMaterial color={PALETTE.roadLine}/></mesh>)}
-    {[-3.8, -2.6, -1.4, 1.4, 2.6, 3.8].map(x => <mesh key={x} position={[x, .11, 4.2]}><boxGeometry args={[.7, .04, 2.5]}/><meshStandardMaterial color="#e7e2d1"/></mesh>)}
+    <CuboidCollider args={[82,.1,89]} position={[-8,-.1,-5]}/>
+    <mesh receiveShadow rotation-x={-Math.PI/2} position={[-8,0,-5]}><planeGeometry args={[164,178]}/><meshStandardMaterial color="#63785b"/></mesh>
+    {vertical.map(x=><group key={x}><mesh position={[x,.025,-5]}><boxGeometry args={[8,.08,178]}/><meshStandardMaterial color={PALETTE.road}/></mesh><mesh position={[x-5,.09,-5]}><boxGeometry args={[2,.16,178]}/><meshStandardMaterial color={PALETTE.sidewalk}/></mesh><mesh position={[x+5,.09,-5]}><boxGeometry args={[2,.16,178]}/><meshStandardMaterial color={PALETTE.sidewalk}/></mesh></group>)}
+    {horizontal.map(z=><group key={z}><mesh position={[-8,.03,z]}><boxGeometry args={[164,.09,8]}/><meshStandardMaterial color="#454b4d"/></mesh><mesh position={[-8,.095,z-5]}><boxGeometry args={[164,.17,2]}/><meshStandardMaterial color={PALETTE.sidewalk}/></mesh><mesh position={[-8,.095,z+5]}><boxGeometry args={[164,.17,2]}/><meshStandardMaterial color={PALETTE.sidewalk}/></mesh></group>)}
+    <mesh position={[45,.02,-65]}><cylinderGeometry args={[18,18,.05,48]}/><meshStandardMaterial color="#3d7180" roughness={.25}/></mesh>
+    <mesh position={[16,.02,78]}><boxGeometry args={[112,.05,12]}/><meshStandardMaterial color="#356b78" roughness={.2}/></mesh>
   </RigidBody>;
 }
 
@@ -81,8 +80,8 @@ function WorldBoundary() {
 
 function Pagoda({ night }: { night: boolean }) {
   return <RigidBody type="fixed" colliders={false}>
-    <CuboidCollider args={[6.2, .5, 6.2]} position={[19, .5, -16]}/>
-    <group position={[19, 0, -16]}>
+    <CuboidCollider args={[6.2, .5, 6.2]} position={[-10, .5, -62]}/>
+    <group position={[-10, 0, -62]}>
       <mesh position-y={.3} receiveShadow><cylinderGeometry args={[7, 7.5, .6, 8]}/><meshStandardMaterial color="#e9dfc5"/></mesh>
       <mesh position={[0, .75, 0]}><cylinderGeometry args={[4.8, 5.7, .9, 32]}/><meshStandardMaterial color={PALETTE.deepGold}/></mesh>
       {[0, 1, 2, 3, 4].map(i => <mesh key={i} position-y={1.55 + i * 1.22} castShadow><cylinderGeometry args={[3.7 - i * .55, 4.25 - i * .55, 1.25, 32]}/><meshStandardMaterial color={i % 2 ? '#f0c94e' : PALETTE.gold} metalness={.35} roughness={.35} emissive={night ? '#76520e' : '#000'} emissiveIntensity={night ? .35 : 0}/></mesh>)}
@@ -95,20 +94,20 @@ function Pagoda({ night }: { night: boolean }) {
 }
 
 function Market() {
-  return <group>{[9, 13, 17].map((x, i) => <RigidBody type="fixed" colliders="cuboid" key={x}><group position={[x, 0, 14]}><mesh position-y={1}><boxGeometry args={[3.2, 2, 2.4]}/><meshStandardMaterial color="#8a5d3e"/></mesh><mesh position={[0, 2.2, 0]} rotation-z={i % 2 ? .04 : -.04}><boxGeometry args={[3.8, .12, 3]}/><meshStandardMaterial color={[PALETTE.marketRed, '#e1ad45', PALETTE.teal][i]}/></mesh>{[-.8, 0, .8].map((v, j) => <mesh key={j} position={[v, 1.55, -1.25]}><sphereGeometry args={[.22, 8, 8]}/><meshStandardMaterial color={['#dd753c', '#719447', '#d9c751'][j]}/></mesh>)}</group></RigidBody>)}</group>;
+  return <group>{[-50, -46, -42].map((x, i) => <RigidBody type="fixed" colliders="cuboid" key={x}><group position={[x, 0, 14]}><mesh position-y={1}><boxGeometry args={[3.2, 2, 2.4]}/><meshStandardMaterial color="#8a5d3e"/></mesh><mesh position={[0, 2.2, 0]} rotation-z={i % 2 ? .04 : -.04}><boxGeometry args={[3.8, .12, 3]}/><meshStandardMaterial color={[PALETTE.marketRed, '#e1ad45', PALETTE.teal][i]}/></mesh>{[-.8, 0, .8].map((v, j) => <mesh key={j} position={[v, 1.55, -1.25]}><sphereGeometry args={[.22, 8, 8]}/><meshStandardMaterial color={['#dd753c', '#719447', '#d9c751'][j]}/></mesh>)}</group></RigidBody>)}</group>;
 }
 
 function TeaShop() {
-  return <group>{[-10, -7, -4].map((x, i) => <group key={x} position={[x, 0, 6.4]}><mesh position-y={.55}><cylinderGeometry args={[.65, .65, .1, 16]}/><meshStandardMaterial color="#8a5536"/></mesh>{[-.75, .75].map(z => <mesh key={z} position={[0, .32, z]}><cylinderGeometry args={[.25, .3, .6, 10]}/><meshStandardMaterial color={i === 1 ? '#d39b44' : '#4d7770'}/></mesh>)}</group>)}<mesh position={[-7, 1, 5.75]}><boxGeometry args={[8, .12, 2.3]}/><meshStandardMaterial color="#d59b3c"/></mesh></group>;
+  return <group>{[-61, -58, -55].map((x, i) => <group key={x} position={[x, 0, 6.4]}><mesh position-y={.55}><cylinderGeometry args={[.65, .65, .1, 16]}/><meshStandardMaterial color="#8a5536"/></mesh>{[-.75, .75].map(z => <mesh key={z} position={[0, .32, z]}><cylinderGeometry args={[.25, .3, .6, 10]}/><meshStandardMaterial color={i === 1 ? '#d39b44' : '#4d7770'}/></mesh>)}</group>)}<mesh position={[-58, 1, 5.75]}><boxGeometry args={[8, .12, 2.3]}/><meshStandardMaterial color="#d59b3c"/></mesh></group>;
 }
 
 function BusStation() {
-  return <RigidBody type="fixed" colliders="cuboid"><group position={[-20, 0, -12]}><mesh position-y={1.15} castShadow><boxGeometry args={[6.5, 2.3, 2.4]}/><meshStandardMaterial color="#c65c45"/></mesh><mesh position={[-1.8, .55, 1.22]}><circleGeometry args={[.55, 16]}/><meshStandardMaterial color="#252c30"/></mesh><mesh position={[1.8, .55, 1.22]}><circleGeometry args={[.55, 16]}/><meshStandardMaterial color="#252c30"/></mesh><mesh position={[0, 1.45, 1.23]}><planeGeometry args={[4.5, .65]}/><meshStandardMaterial color="#a9d4d3"/></mesh></group></RigidBody>;
+  return <RigidBody type="fixed" colliders="cuboid"><group position={[-76, 0, -12]}><mesh position-y={1.15} castShadow><boxGeometry args={[6.5, 2.3, 2.4]}/><meshStandardMaterial color="#c65c45"/></mesh><mesh position={[-1.8, .55, 1.22]}><circleGeometry args={[.55, 16]}/><meshStandardMaterial color="#252c30"/></mesh><mesh position={[1.8, .55, 1.22]}><circleGeometry args={[.55, 16]}/><meshStandardMaterial color="#252c30"/></mesh><mesh position={[0, 1.45, 1.23]}><planeGeometry args={[4.5, .65]}/><meshStandardMaterial color="#a9d4d3"/></mesh></group></RigidBody>;
 }
 
 const PEDESTRIAN_ROUTES = [
-  [[-15, 4], [-7, 4], [-7, 10], [-15, 10]], [[8, 8], [18, 8], [18, 12], [8, 12]],
-  [[6, -6], [6, -19], [11, -19], [11, -6]], [[25, 16], [29, 16], [29, 24], [22, 24]],
+  [[-15, 4], [-57, 4], [-57, 10], [-15, 10]], [[8, 8], [18, 8], [18, 12], [8, 12]],
+  [[6, -6], [6, -19], [11, -19], [11, -6]], [[-15, 16], [-11, 16], [-11, 24], [22, 24]],
   [[-28, -8], [-15, -8], [-15, -3], [-28, -3]], [[-4, 25], [5, 25], [5, 7], [-4, 7]],
 ] as const;
 const CLOTHES = ['#b34e3f', '#457b77', '#d49b42', '#725b8e', '#d27757', '#315f82'];
@@ -147,7 +146,7 @@ function StreetLife({ density }: { density: number }) {
   const count = density === 0 ? 10 : density === 1 ? 14 : 18;
   return <>{Array.from({length:count},(_,i)=><Pedestrian key={i} route={PEDESTRIAN_ROUTES[i%PEDESTRIAN_ROUTES.length]} offset={i} color={CLOTHES[i%CLOTHES.length]}/>)}
     {density > 0 && <><MovingVehicle lane={-2.25}/><MovingVehicle lane={2.25} reverse/></>}
-    {[[-14, -5], [17, 5], [29, -5]].map(([x, z], i) => <group key={x} position={[x, 0, z]} rotation-y={i ? Math.PI / 2 : 0}><mesh position-y={.55}><boxGeometry args={[3.3, 1.1, 1.55]}/><meshStandardMaterial color={['#527987', '#b65748', '#d5a143'][i]}/></mesh></group>)}
+    {[[-14, -5], [17, 5], [-11, -5]].map(([x, z], i) => <group key={x} position={[x, 0, z]} rotation-y={i ? Math.PI / 2 : 0}><mesh position-y={.55}><boxGeometry args={[3.3, 1.1, 1.55]}/><meshStandardMaterial color={['#527987', '#b65748', '#d5a143'][i]}/></mesh></group>)}
   </>;
 }
 
@@ -198,7 +197,7 @@ function Lighting() {
   const dawn = THREE.MathUtils.smoothstep(h, 5, 8), dusk = THREE.MathUtils.smoothstep(h, 16.5, 19.5);
   const warm = Math.max(1 - dawn, dusk), sky = new THREE.Color('#78b7d0').lerp(new THREE.Color('#e78a68'), warm).lerp(new THREE.Color(PALETTE.night), night ? .9 : 0);
   const sunAngle = ((h - 6) / 12) * Math.PI, sun: [number, number, number] = [Math.cos(sunAngle) * 45, Math.max(-4, Math.sin(sunAngle) * 42), 18];
-  return <><color attach="background" args={[sky]}/><fog attach="fog" args={[sky.clone().lerp(new THREE.Color('#829185'), .22), 38, 92]}/>{!night&&<Sky distance={450000} sunPosition={sun} inclination={.49} azimuth={(h - 6) / 24} turbidity={warm > .45 ? 9 : 5} rayleigh={warm > .45 ? 2.4 : 1.3}/>}<hemisphereLight args={[night ? '#62749b' : '#d7edf0', night ? '#18232e' : '#655b46', .35 + daylight * .62]}/><directionalLight castShadow position={sun} intensity={night ? .12 : daylight * 1.85} color={warm > .35 ? '#ffb06c' : '#fff4db'} shadow-mapSize={[1024, 1024]} shadow-camera-left={-35} shadow-camera-right={35} shadow-camera-top={35} shadow-camera-bottom={-35} shadow-camera-near={1} shadow-camera-far={90} shadow-bias={-.0002} shadow-normalBias={.025}/>{night && <Stars radius={70} depth={20} count={600} factor={2}/>} {[-14, 8, 19].flatMap(x => [-8, 8].map(z => <Lamp key={`${x}${z}`} x={x} z={z} night={night}/>))}<Lamp x={19} z={-8} night={night}/><Lamp x={12} z={-16} night={night}/></>;
+  return <><color attach="background" args={[sky]}/><fog attach="fog" args={[sky.clone().lerp(new THREE.Color('#829185'), .22), 38, 92]}/>{!night&&<Sky distance={450000} sunPosition={sun} inclination={.49} azimuth={(h - 6) / 24} turbidity={warm > .45 ? 9 : 5} rayleigh={warm > .45 ? 2.4 : 1.3}/>}<hemisphereLight args={[night ? '#62749b' : '#d7edf0', night ? '#18232e' : '#655b46', .35 + daylight * .62]}/><directionalLight castShadow position={sun} intensity={night ? .12 : daylight * 1.85} color={warm > .35 ? '#ffb06c' : '#fff4db'} shadow-mapSize={[1024, 1024]} shadow-camera-left={-35} shadow-camera-right={35} shadow-camera-top={35} shadow-camera-bottom={-35} shadow-camera-near={1} shadow-camera-far={90} shadow-bias={-.0002} shadow-normalBias={.025}/>{night && <Stars radius={70} depth={20} count={600} factor={2}/>} {[-14, 8, 19].flatMap(x => [-58, 8].map(z => <Lamp key={`${x}${z}`} x={x} z={z} night={night}/>))}<Lamp x={19} z={-8} night={night}/><Lamp x={12} z={-16} night={night}/></>;
 }
 
 function Controller() {
@@ -258,6 +257,10 @@ function Controller() {
   return <RigidBody ref={body} colliders={false} position={pos ?? DEFAULT_SPAWN.position} enabledRotations={[false, true, false]} friction={0} linearDamping={1.5} angularDamping={8} canSleep={false} ccd><CapsuleCollider args={[.65, .38]} position={[0, 1.03, 0]}/><PlayerAvatar loadout={loadout} motion={anim}/></RigidBody>;
 }
 
+function DistrictScenery({zoneId}:{zoneId:string}){const zone=YANGON_ZONES.find(z=>z.id===zoneId)!;const cx=(zone.bounds.minX+zone.bounds.maxX)/2,cz=(zone.bounds.minZ+zone.bounds.maxZ)/2;if(zoneId==='tamarind_quarter')return null;const count=zone.visualTheme.density==='DENSE'?10:6;return <group>{Array.from({length:count},(_,i)=>{const cols=5,x=zone.bounds.minX+9+(i%cols)*9,z=zone.bounds.minZ+10+Math.floor(i/cols)*15;return <Building key={i} b={{p:[x,3.5+(i%3),z],s:[6.5,7+(i%3)*2,7],color:i%2?zone.visualTheme.accent:'#d4aa78'}}/>})}{zoneId==='market_chinatown'&&Array.from({length:6},(_,i)=><group key={i} position={[27+i*6,0,5]}><mesh position-y={1}><boxGeometry args={[4,2,3]}/><meshStandardMaterial color={i%2?'#c55543':'#dda83e'}/></mesh></group>)}{zoneId==='kandawgyi'&&Array.from({length:8},(_,i)=><Tree key={i} x={25+(i%4)*14} z={-87+Math.floor(i/4)*42}/>)}{zoneId==='waterfront'&&<group position={[22,0,72]}><mesh position-y={1.8}><boxGeometry args={[8,3.6,5]}/><meshStandardMaterial color="#b88a63"/></mesh><Html position={[0,4,0]} center><span className="district-sign">RIVER JETTY · ဆိပ်ကမ်း</span></Html></group>}<Html position={[cx,7,cz]} center distanceFactor={18}><span className="district-sign">{zone.name.toUpperCase()}</span></Html></group>}
+
+function StreamedDistricts(){const [ids,setIds]=useState(()=>loadedZonesAt(useGame.getState().player?.position??DEFAULT_SPAWN.position).map(z=>z.id));const last=useRef('');useFrame(()=>{const p=useGame.getState().player?.position;if(!p)return;const next=loadedZonesAt(p).map(z=>z.id),key=next.join('|');if(key!==last.current){last.current=key;setIds(next)}});return <>{ids.map(id=><DistrictScenery key={id} zoneId={id}/>)}</>}
+
 function PhysicsWorld({ graphics, trees, night }: { graphics: string; trees: number[][]; night: boolean }) {
   return <Physics gravity={[0, -22, 0]}>
     <Roads/>
@@ -267,6 +270,7 @@ function PhysicsWorld({ graphics, trees, night }: { graphics: string; trees: num
     <Market/>
     <TeaShop/>
     <BusStation/>
+    <StreamedDistricts/>
     <StreetLife density={graphics === 'LOW' ? 0 : graphics === 'HIGH' ? 2 : 1}/>
     <Spots/>
     {trees.slice(0, graphics === 'LOW' ? 7 : trees.length).map(([x, z], i) => <Tree key={i} x={x} z={z} scale={.85 + i % 3 * .12}/>)}
@@ -292,10 +296,10 @@ function PerformanceReporter() {
 
 export default function World() {
   const graphics = typeof window === 'undefined' ? 'MEDIUM' : loadSettings().graphics;
-  const trees = [[-15, 12], [-16, 19], [7, 10], [20, 7], [29, 17], [24, -8], [12, -10], [29, -20], [9, -22], [-15, -9], [-30, -6], [-30, 26]];
+  const trees = [[-15, 12], [-16, 19], [7, 10], [20, 7], [-11, 17], [24, -8], [12, -10], [-11, -20], [9, -22], [-15, -9], [-30, -6], [-30, 26]];
   const minutes = useGame(s => s.player?.gameMinutes ?? 480);
   const night = minutes / 60 < 6 || minutes / 60 >= 19;
-  return <Canvas shadows={graphics !== 'LOW'} camera={{ position: [-14, 8, 20], fov: 52, near: .1, far: 110 }} gl={{ antialias: graphics !== 'LOW', preserveDrawingBuffer: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }} dpr={graphics === 'HIGH' ? [1, 2] : [1, 1.4]}>
+  return <Canvas shadows={graphics !== 'LOW'} camera={{ position: [-14, 8, 20], fov: 52, near: .1, far: 190 }} gl={{ antialias: graphics !== 'LOW', preserveDrawingBuffer: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }} dpr={graphics === 'HIGH' ? [1, 2] : [1, 1.4]}>
     <Lighting/>
     <PhysicsWorld graphics={graphics} trees={trees} night={night}/>
     {process.env.NODE_ENV !== 'production' && <PerformanceReporter/>}
