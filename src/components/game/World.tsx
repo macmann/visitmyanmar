@@ -144,8 +144,9 @@ function SpotMarker({ spot, active }: { spot: (typeof SPOTS)[number]; active: bo
 }
 
 function Spots() {
-  const activeTargetId = useGame(s => s.activeInteractionTarget?.id);
-  return <>{SPOTS.map(spot => <SpotMarker key={spot.id} spot={spot} active={activeTargetId === spot.id}/>)}</>;
+  const activeTargetId = useGame(s => s.activeInteractionTarget?.id), discoveries=useGame(s=>s.player?.discoveries??[]);
+  const available=(id:string)=>id==='market'?discoveries.includes('market_revealed'):id==='shwedagon'?discoveries.includes('landmark_revealed'):id==='viewpoint'?discoveries.includes('viewpoint_revealed'):true;
+  return <>{SPOTS.filter(spot=>available(spot.id)).map(spot => <SpotMarker key={spot.id} spot={spot} active={activeTargetId === spot.id}/>)}</>;
 }
 
 function Lighting() {
@@ -206,7 +207,7 @@ function Controller() {
     actualDistance.current=THREE.MathUtils.damp(actualDistance.current,safe,safe<actualDistance.current?18:5,dt);
     const desiredCamera=focus.clone().addScaledVector(orbit,actualDistance.current); camera.position.lerp(desiredCamera,1-Math.exp(-dt*12));
     const matrix=new THREE.Matrix4().lookAt(camera.position,focus,camera.up), targetRotation=new THREE.Quaternion().setFromRotationMatrix(matrix); camera.quaternion.slerp(targetRotation,1-Math.exp(-dt*16));
-    setActiveInteractionTarget(interactionTargetAt([t.x, t.y, t.z]));
+    const candidate=interactionTargetAt([t.x,t.y,t.z]);const known=!candidate||candidate.id==='market'?player?.discoveries.includes('market_revealed'):candidate.id==='shwedagon'?player?.discoveries.includes('landmark_revealed'):candidate.id==='viewpoint'?player?.discoveries.includes('viewpoint_revealed'):true;setActiveInteractionTarget(known?candidate:null);
     if (performance.now() - diagnosticsAt.current > 500) { diagnosticsAt.current = performance.now(); const p = useGame.getState().player; if (p) useGame.getState().setWorldDiagnostics({ position: [t.x,t.y,t.z], lastSafe: p.lastSafePosition, checkpoint: p.currentCheckpoint, outOfBounds: t.y < WORLD_BOUNDS.killY || t.x < WORLD_BOUNDS.minX || t.x > WORLD_BOUNDS.maxX || t.z < WORLD_BOUNDS.minZ || t.z > WORLD_BOUNDS.maxZ, grounded: t.y >= .9 && t.y < 1.35 }); }
   });
   const loadout=useGame(s=>s.player!.avatarLoadout);
