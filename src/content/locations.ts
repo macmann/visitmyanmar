@@ -1,12 +1,12 @@
 import type { Activity, GameLocation } from '@/lib/types';
 export const ACTIVITIES:Activity[]=[
  {id:'hotel_checkin',locationId:'hotel',name:'Check In',description:'Settle into your room and leave your bag before exploring.',gameMinutes:10,discoveryId:'hotel_checked_in',repeatable:false},
- {id:'food_mohinga',locationId:'tea_shop',name:'Mohinga',description:'Traditional rice-noodle breakfast dish.',mmkCost:3000,energyRestore:20,gameMinutes:15,foodId:'mohinga',discoveryId:'food:mohinga',mmkReward:600,repeatable:true},
- {id:'food_laphet',locationId:'tea_shop',name:'Laphet Thoke',description:'A tea-leaf salad with a mix of textures.',mmkCost:2500,energyRestore:18,gameMinutes:15,foodId:'laphet',discoveryId:'food:laphet',mmkReward:700,repeatable:true},
- {id:'food_tea_snack',locationId:'tea_shop',name:'Tea + Snack',description:'A warm drink and a small snack.',mmkCost:1500,energyRestore:12,gameMinutes:10,foodId:'tea_snack',discoveryId:'food:tea_snack',mmkReward:400,repeatable:true},
- {id:'tea_culture',locationId:'tea_shop',name:'Look Around',description:'Notice the rhythm of a neighbourhood tea shop.',gameMinutes:12,discoveryId:'tea_shop_culture',mmkReward:500,repeatable:false},
+ {id:'food_mohinga',locationId:'tea_shop',name:'Mohinga',description:'A rice-noodle breakfast bowl served warm.',mmkCost:3000,energyRestore:20,gameMinutes:15,foodId:'mohinga',discoveryId:'food:mohinga',availableAt:['tea_shop'],asset:'/assets/foods/mohinga.webp',mealType:'BREAKFAST',questEvent:'FOOD_EATEN',repeatable:true},
+ {id:'food_laphet',locationId:'tea_shop',name:'Laphet Thoke',description:'A tea-leaf salad with a mix of textures.',mmkCost:2500,energyRestore:18,gameMinutes:15,foodId:'laphet',discoveryId:'food:laphet',availableAt:['tea_shop'],asset:'/assets/foods/laphet.webp',repeatable:true},
+ {id:'food_tea_snack',locationId:'tea_shop',name:'Tea + Snack',description:'A warm drink and a small snack.',mmkCost:1500,energyRestore:12,gameMinutes:10,foodId:'tea_snack',discoveryId:'food:tea_snack',availableAt:['tea_shop'],asset:'/assets/foods/tea-snack.webp',repeatable:true},
+ {id:'tea_culture',locationId:'tea_shop',name:'Yangon Tea Shop',description:'Notice the rhythm of a neighbourhood tea shop.',gameMinutes:12,discoveryId:'tea_shop_experience',questEvent:'DISCOVERY_FOUND',repeatable:true},
  {id:'meet_tea_owner',locationId:'tea_shop',name:'Meet Daw Nwe',description:'Introduce yourself to the tea-shop owner.',gameMinutes:5,discoveryId:'tea_owner_met',repeatable:false},
- {id:'landmark_recommendation',locationId:'tea_shop',name:'Ask about Yangon',description:'Hear Daw Nwe’s recommendation for the golden pagoda gardens.',gameMinutes:5,discoveryId:'landmark_recommended',repeatable:false},
+ {id:'landmark_recommendation',locationId:'tea_shop',name:'Ask about Yangon',description:'Hear Daw Nwe’s recommendation for the existing golden pagoda gardens.',gameMinutes:5,discoveryId:'landmark_recommended',questEvent:'LOCATION_REVEALED',repeatable:false},
  {id:'market_browse',locationId:'market',name:'Browse Market',description:'Browse the compact collection of stalls.',gameMinutes:12,discoveryId:'market_browsed',repeatable:true},
  {id:'market_postcard',locationId:'market',name:'Postcard',description:'A printed city keepsake.',mmkCost:800,gameMinutes:3,inventoryItem:'postcard',repeatable:false},
  {id:'market_notebook',locationId:'market',name:'Travel Notebook',description:'A pocket notebook for field notes.',mmkCost:2200,gameMinutes:3,inventoryItem:'travel_notebook',repeatable:false},
