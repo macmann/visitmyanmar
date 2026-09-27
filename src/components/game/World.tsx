@@ -136,13 +136,14 @@ function Controller() {
   const seenRecovery = useRef(recoveryNonce), seenFall = useRef(devFallNonce), diagnosticsAt = useRef(0), recovering = useRef(false);
   const velocity = useRef(new THREE.Vector3()), forward = useMemo(() => new THREE.Vector3(), []), right = useMemo(() => new THREE.Vector3(), []);
   useEffect(() => {
-    const down = (e: KeyboardEvent) => keys.current.add(e.code), up = (e: KeyboardEvent) => keys.current.delete(e.code);
+    const down = (e: KeyboardEvent) => { const game = useGame.getState(); if (!game.panel && !game.locationId && !game.cameraMode && !game.transitioning) keys.current.add(e.code); }, up = (e: KeyboardEvent) => keys.current.delete(e.code);
     const pointerDown = () => { dragging.current = true; }, pointerUp = () => { dragging.current = false; };
     const move = (e: PointerEvent) => { if (!dragging.current) return; yaw.current -= e.movementX * .004; pitch.current = THREE.MathUtils.clamp(pitch.current + e.movementY * .003, .18, 1.05); };
     const wheel = (e: WheelEvent) => { distance.current = THREE.MathUtils.clamp(distance.current + e.deltaY * .008, 5, 13); };
     addEventListener('keydown', down); addEventListener('keyup', up); addEventListener('pointerup', pointerUp); addEventListener('pointermove', move); gl.domElement.addEventListener('pointerdown', pointerDown); gl.domElement.addEventListener('wheel', wheel);
     return () => { removeEventListener('keydown', down); removeEventListener('keyup', up); removeEventListener('pointerup', pointerUp); removeEventListener('pointermove', move); gl.domElement.removeEventListener('pointerdown', pointerDown); gl.domElement.removeEventListener('wheel', wheel); };
   }, [gl]);
+  useEffect(() => useGame.subscribe(s => { if (s.panel || s.locationId || s.cameraMode || s.transitioning) keys.current.clear(); }), []);
   const recover = (automatic: boolean) => {
     const b = body.current, player = useGame.getState().player; if (!b || !player || recovering.current) return;
     recovering.current = true;

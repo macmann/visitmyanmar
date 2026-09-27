@@ -8,7 +8,7 @@ export const FOODS=[
  {id:'tea_snack',name:'Sweet tea & samosa',description:'A tea-shop pause with a crisp snack.',price:1200,energy:12,reward:400}
 ] as const;
 export const SPOTS:WorldSpot[]=[
- {id:'hotel',name:'Golden Tamarind Guesthouse',position:[-22,0,14],kind:'sleep',prompt:'Enter Hotel',color:'#d99058',description:'Your quiet base in the Tamarind Quarter.'},
+ {id:'hotel',name:'Golden Tamarind Guesthouse',position:[-22,0,14],kind:'sleep',prompt:'Enter Guest House',color:'#d99058',description:'Your quiet base in the Tamarind Quarter.'},
  {id:'tea_shop',name:'Morning Star Tea Shop',position:[-7,0,9],kind:'food',prompt:'Enter Tea Shop',color:'#57a773',description:'Steam, conversation, and local favourites.'},
  {id:'shwedagon',name:'Golden Pagoda Gardens',position:[19,0,-16],kind:'attraction',prompt:'Enter Landmark',color:'#e8b938',description:'A fictionalized landmark garden inspired by Yangon’s golden skyline.'},
  {id:'market',name:'Lanmadaw Market',position:[13,0,12],kind:'npc',prompt:'Enter Market',color:'#d75b61',description:'A compact neighbourhood market.'},
