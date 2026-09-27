@@ -1,7 +1,7 @@
 'use client';
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Environment, Html, Stars } from '@react-three/drei';
+import { Html, Sky, Stars } from '@react-three/drei';
 import { CapsuleCollider, CuboidCollider, Physics, RigidBody, type RapierRigidBody } from '@react-three/rapier';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
@@ -148,10 +148,12 @@ function Spots() {
 
 function Lighting() {
   const minutes = useGame(s => s.player?.gameMinutes ?? 480), h = minutes / 60;
-  const daylight = Math.max(.06, Math.sin(((h - 5) / 14) * Math.PI));
+  const daylight = Math.max(.04, Math.sin(((h - 5) / 14) * Math.PI));
   const night = h < 6 || h >= 19;
-  const sunset = h >= 17 && h < 19;
-  return <><color attach="background" args={[night ? PALETTE.night : sunset ? '#d77f63' : '#83b8c1']}/><fog attach="fog" args={[night ? '#17253a' : sunset ? '#b67865' : '#8eaaa0', 40, 88]}/><hemisphereLight args={[night ? '#63759a' : '#c7e5e5', '#554b3f', .35 + daylight * .55]}/><directionalLight castShadow position={[h < 12 ? -20 : 20, 24, 12]} intensity={daylight * 1.6} color={sunset ? '#ffad6c' : '#fff2d0'} shadow-mapSize={[1024, 1024]} shadow-camera-far={80}/>{night && <Stars radius={70} depth={20} count={600} factor={2}/>} {[-14, 8, 19].flatMap(x => [-8, 8].map(z => <Lamp key={`${x}${z}`} x={x} z={z} night={night}/>))}<Lamp x={19} z={-8} night={night}/><Lamp x={12} z={-16} night={night}/></>;
+  const dawn = THREE.MathUtils.smoothstep(h, 5, 8), dusk = THREE.MathUtils.smoothstep(h, 16.5, 19.5);
+  const warm = Math.max(1 - dawn, dusk), sky = new THREE.Color('#78b7d0').lerp(new THREE.Color('#e78a68'), warm).lerp(new THREE.Color(PALETTE.night), night ? .9 : 0);
+  const sunAngle = ((h - 6) / 12) * Math.PI, sun: [number, number, number] = [Math.cos(sunAngle) * 45, Math.max(-4, Math.sin(sunAngle) * 42), 18];
+  return <><color attach="background" args={[sky]}/><fog attach="fog" args={[sky.clone().lerp(new THREE.Color('#829185'), .22), 38, 92]}/>{!night&&<Sky distance={450000} sunPosition={sun} inclination={.49} azimuth={(h - 6) / 24} turbidity={warm > .45 ? 9 : 5} rayleigh={warm > .45 ? 2.4 : 1.3}/>}<hemisphereLight args={[night ? '#62749b' : '#d7edf0', night ? '#18232e' : '#655b46', .35 + daylight * .62]}/><directionalLight castShadow position={sun} intensity={night ? .12 : daylight * 1.85} color={warm > .35 ? '#ffb06c' : '#fff4db'} shadow-mapSize={[1024, 1024]} shadow-camera-left={-35} shadow-camera-right={35} shadow-camera-top={35} shadow-camera-bottom={-35} shadow-camera-near={1} shadow-camera-far={90} shadow-bias={-.0002} shadow-normalBias={.025}/>{night && <Stars radius={70} depth={20} count={600} factor={2}/>} {[-14, 8, 19].flatMap(x => [-8, 8].map(z => <Lamp key={`${x}${z}`} x={x} z={z} night={night}/>))}<Lamp x={19} z={-8} night={night}/><Lamp x={12} z={-16} night={night}/></>;
 }
 
 type AnimState = 'IDLE' | 'WALK' | 'JOG' | 'INTERACT' | 'PHOTO';
@@ -237,9 +239,8 @@ export default function World() {
   const trees = [[-15, 12], [-16, 19], [7, 10], [20, 7], [29, 17], [24, -8], [12, -10], [29, -20], [9, -22], [-15, -9], [-30, -6], [-30, 26]];
   const minutes = useGame(s => s.player?.gameMinutes ?? 480);
   const night = minutes / 60 < 6 || minutes / 60 >= 19;
-  return <Canvas shadows={graphics !== 'LOW'} camera={{ position: [-14, 8, 20], fov: 52, near: .1, far: 110 }} gl={{ antialias: graphics !== 'LOW', preserveDrawingBuffer: true }} dpr={graphics === 'HIGH' ? [1, 2] : [1, 1.4]}>
+  return <Canvas shadows={graphics !== 'LOW'} camera={{ position: [-14, 8, 20], fov: 52, near: .1, far: 110 }} gl={{ antialias: graphics !== 'LOW', preserveDrawingBuffer: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }} dpr={graphics === 'HIGH' ? [1, 2] : [1, 1.4]}>
     <Lighting/>
-    <Environment preset="sunset" background={false}/>
     <PhysicsWorld graphics={graphics} trees={trees} night={night}/>
   </Canvas>;
 }
