@@ -32,7 +32,7 @@ export function executeInteraction(target: InteractionTarget) {
     return;
   }
   void api('interact', { target: target.id }).then(player => {
-    useGame.getState().setPlayer(player);
+    useGame.getState().mergePersistentPlayer(player);
     useGame.getState().setNotice(`NEW DISCOVERY · ${target.label} · Journal updated`);
   }).catch(error => useGame.getState().setError(error instanceof Error ? error.message : 'Network error'));
 }
