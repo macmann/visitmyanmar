@@ -1,7 +1,9 @@
+import type { AvatarSlot } from '@/content/avatar';
 export type MajorState='EXPLORING'|'SLEEPING'|'TRAVELLING'|'LONG_ACTIVITY';
 export type PersistentAction={id:string;kind:'SLEEP'|'TRAVEL';startedAt:string;completesAt:string;gameMinutes:number;energyRecovery:number;destination?:string};
 export type TimelineItem={at:string;day:number;text:string};
-export type PlayerSave={id:string;destination:string;zone:string;day:number;gameMinutes:number;energy:number;mmk:number;majorState:MajorState;position:[number,number,number];lastSafePosition:[number,number,number];currentCheckpoint:string;discoveries:string[];foods:string[];photos:string[];talkedTo:string[];completedQuests:string[];baganUnlocked:boolean;activeAction:PersistentAction|null;lastSleepCompletedAt?:string;timeline:TimelineItem[];inventory:string[];equipped:Record<string,string>;updatedAt:string};
+export type AvatarLoadout=Record<AvatarSlot,string|null>;
+export type PlayerSave={id:string;destination:string;zone:string;day:number;gameMinutes:number;energy:number;mmk:number;majorState:MajorState;position:[number,number,number];lastSafePosition:[number,number,number];currentCheckpoint:string;discoveries:string[];foods:string[];photos:string[];talkedTo:string[];completedQuests:string[];baganUnlocked:boolean;activeAction:PersistentAction|null;lastSleepCompletedAt?:string;timeline:TimelineItem[];inventory:string[];equipped:Record<string,string>;avatarInventory:string[];avatarLoadout:AvatarLoadout;avatarCreated:boolean;updatedAt:string};
 export type Vec3=[number,number,number];
 export type LocationType='TEA_SHOP'|'MARKET'|'HOTEL'|'LANDMARK'|'BUS_STATION';
 export type LocationContext='WORLD'|LocationType;
