@@ -15,9 +15,9 @@ describe('central interaction targeting', () => {
     expect(interactionTargetAt(spot.position)?.action).toBe('OPEN_LOCATION');
   });
 
-  it('dispatches non-location discoveries as visits', () => {
+  it('opens the dedicated viewpoint experience', () => {
     const viewpoint = SPOTS.find(spot => spot.id === 'viewpoint')!;
-    expect(interactionTargetAt(viewpoint.position)?.action).toBe('VISIT');
+    expect(interactionTargetAt(viewpoint.position)?.action).toBe('OPEN_LOCATION');
   });
 
   it('returns no target outside interaction range', () => {

@@ -53,7 +53,7 @@ export default function InputController() {
       if (event.code === 'KeyM' && !state.locationId) state.setPanel(state.panel === 'map' ? null : 'map');
       if (event.code === 'KeyJ') state.setPanel(state.panel === 'journal' ? null : 'journal');
       if (event.code === 'Escape') { if (state.locationId) return; state.setPanel(state.panel ? null : 'menu'); state.setCameraMode(false); }
-      if (event.code === 'KeyC' && !state.panel && !state.locationId) state.setCameraMode(!state.cameraMode);
+      if (event.code === 'KeyC' && !state.panel && (!state.locationId || ['shwedagon','viewpoint'].includes(state.locationId))) state.setCameraMode(!state.cameraMode);
     };
     // Capture makes interaction independent of canvas focus and downstream handlers.
     window.addEventListener('keydown', onKeyDown, { capture: true });
