@@ -6,6 +6,7 @@ import { AI_NPCS } from '@/content/ai-npcs';
 import { converseWithNPC } from '@/lib/ai/npc-service';
 import { takeAIRequest } from '@/lib/ai/rate-limit';
 import { getLLMConfig } from '@/lib/ai/config';
+import { reconcileProgression } from '@/lib/progression';
 
 export const dynamic = 'force-dynamic';
 const schema = z.object({ npcId: z.string().max(80), question: z.string().trim().min(1).max(500), history: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().max(500) })).max(6).default([]) }).strict();
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
   const player = await getPlayer(identity.playerId);
   if (player.locationContext === 'WORLD' || npc.location !== player.locationContext.toLowerCase()) return NextResponse.json({ error: 'Move closer to speak with this local.' }, { status: 403 });
   const reply = await converseWithNPC({ ...parsed.data, player, memory: player.npcMemories?.[npc.id] });
-  await mutatePlayer(identity.playerId, current => ({ ...current, npcMemories: { ...(current.npcMemories ?? {}), [npc.id]: reply.memory }, talkedTo: current.talkedTo.includes(npc.id) ? current.talkedTo : [...current.talkedTo, npc.id] }));
+  await mutatePlayer(identity.playerId, current => reconcileProgression({ ...current, npcMemories: { ...(current.npcMemories ?? {}), [npc.id]: reply.memory }, talkedTo: current.talkedTo.includes(npc.id) ? current.talkedTo : [...current.talkedTo, npc.id] }));
   const { memory: _memory, ...safeReply } = reply;
   return NextResponse.json(safeReply);
 }

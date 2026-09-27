@@ -129,3 +129,11 @@ Opening hours and prices are fictional **game data**, not real visitor guidance.
 Yangon is now an intentionally composed compact district with a guesthouse quarter, tea-shop seating, market lane, crossroads, ticket station, alleys, a hidden garden viewpoint, and a skyline-scale procedural golden pagoda. The third-person controller uses camera-relative WASD movement, smooth acceleration and turning, Shift jogging, drag-to-orbit camera control, and wheel zoom.
 
 The travel journal (`J`), field map (`M`), camera mode (`C`, then Space), contextual interaction (`E`), and settings panel remain presentation layers over the existing server-authoritative economy and persistent sleep/travel state. Graphics and audio preferences are stored locally. Future licensed/commissioned GLBs and audio should be registered in `src/content/assets.ts`; missing production assets are never requested, and procedural scene modules remain the alpha fallback.
+
+## Explorer progression (v0.10)
+
+Explorer XP is permanent personal level progress; Explorer Score is a separate, deterministic accomplishment total intended for future comparison. Both are computed only by the server from the central discovery and reward catalog (`src/content/progression.ts`). Each award has a stable `(sourceType, sourceId)` identity and the database ledger enforces uniqueness per player, so repeating food, conversations, location entry, photos, refreshes, or API requests cannot farm score.
+
+The Journal collections cover Places, Food, People, Stories, Photos, and hidden Secrets. Yangon completion is weighted: core journey 40%, places 20%, food 10%, people 10%, stories 5%, photos 10%, secrets 5%. Bagan unlock requires the completed core day/sleep milestone and 65% Yangon progress; optional completion is not required. Existing JSON saves are reconciled from canonical quest, food, NPC-memory, discovery, and photo records on load without resetting other state.
+
+AI NPCs may phrase configured clues and return validated intents, but never set XP, score, achievements, coordinates, or completion. Country is optional user-selected profile identity only and has no gameplay effect. Multiplayer and public leaderboards are intentionally not included.
