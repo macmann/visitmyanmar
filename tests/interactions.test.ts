@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SPOTS } from '@/content/game';
-import { interactionTargetAt } from '@/lib/interactions';
+import { INTERACTION_DISTANCE, interactionTargetAt } from '@/lib/interactions';
 
 describe('central interaction targeting', () => {
   it.each(SPOTS.map(spot => [spot.id, spot.position] as const))('resolves %s at its world position', (id, position) => {
@@ -22,5 +22,10 @@ describe('central interaction targeting', () => {
 
   it('returns no target outside interaction range', () => {
     expect(interactionTargetAt([0, 0, 0])).toBeNull();
+  });
+
+  it('includes the edge of the interaction range', () => {
+    const hotel = SPOTS.find(spot => spot.id === 'hotel')!;
+    expect(interactionTargetAt([hotel.position[0] + INTERACTION_DISTANCE, 0, hotel.position[2]])?.id).toBe('hotel');
   });
 });

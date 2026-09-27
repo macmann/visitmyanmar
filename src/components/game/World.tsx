@@ -107,9 +107,43 @@ function StreetLife() {
   return <>{people.map((p, i) => <group key={i} position={p}><mesh position-y={.9}><capsuleGeometry args={[.22, .75, 5, 8]}/><meshStandardMaterial color={['#b34e3f', '#457b77', '#d49b42', '#725b8e', '#d27757'][i]}/></mesh><mesh position-y={1.65}><sphereGeometry args={[.22, 10, 10]}/><meshStandardMaterial color="#9c6546"/></mesh></group>)}{[[-14, -5], [17, 5], [29, -5]].map(([x, z], i) => <group key={x} position={[x, 0, z]} rotation-y={i ? Math.PI / 2 : 0}><mesh position-y={.55}><boxGeometry args={[3.3, 1.1, 1.55]}/><meshStandardMaterial color={['#527987', '#b65748', '#d5a143'][i]}/></mesh>{[-1, 1].map(v => <mesh key={v} position={[v, .2, .82]} rotation-x={Math.PI / 2}><cylinderGeometry args={[.32, .32, .16, 12]}/><meshStandardMaterial color="#202629"/></mesh>)}</group>)}</>;
 }
 
+function SpotMarker({ spot, active }: { spot: (typeof SPOTS)[number]; active: boolean }) {
+  const marker = useRef<THREE.Group>(null);
+  const halo = useRef<THREE.Mesh>(null);
+  useFrame(({ clock }) => {
+    const wave = (Math.sin(clock.elapsedTime * 3 + spot.position[0]) + 1) / 2;
+    if (marker.current) {
+      marker.current.position.y = 1.25 + wave * .25;
+      marker.current.rotation.y = clock.elapsedTime * 1.2;
+    }
+    if (halo.current) {
+      const scale = .82 + wave * .35;
+      halo.current.scale.setScalar(scale);
+    }
+  });
+  return <group position={spot.position}>
+    <mesh ref={halo} position-y={.08} rotation-x={-Math.PI / 2}>
+      <ringGeometry args={[1.05, 1.38, 40]}/>
+      <meshBasicMaterial color={spot.color} transparent opacity={active ? .95 : .58} depthWrite={false}/>
+    </mesh>
+    <mesh position-y={.04} rotation-x={-Math.PI / 2}>
+      <circleGeometry args={[.92, 40]}/>
+      <meshBasicMaterial color={spot.color} transparent opacity={active ? .24 : .1} depthWrite={false}/>
+    </mesh>
+    <group ref={marker}>
+      <mesh rotation={[Math.PI / 4, 0, Math.PI / 4]}>
+        <octahedronGeometry args={[active ? .34 : .26, 0]}/>
+        <meshStandardMaterial color={spot.color} emissive={spot.color} emissiveIntensity={active ? 2.8 : 1.4} toneMapped={false}/>
+      </mesh>
+      <pointLight color={spot.color} intensity={active ? 2.2 : .7} distance={active ? 5 : 3}/>
+    </group>
+    {active && <Html position={[0, 2.55, 0]} center distanceFactor={13}><div className="world-label"><b>INTERACTABLE</b><span>{spot.name}</span></div></Html>}
+  </group>;
+}
+
 function Spots() {
   const activeTargetId = useGame(s => s.activeInteractionTarget?.id);
-  return <>{SPOTS.map(s => <group key={s.id} position={s.position}><mesh position-y={.13} rotation-x={-Math.PI / 2}><ringGeometry args={[1.15, 1.28, 32]}/><meshBasicMaterial color={s.color} transparent opacity={activeTargetId === s.id ? .9 : .18}/></mesh>{activeTargetId === s.id && <Html position={[0, 2.7, 0]} center distanceFactor={13}><div className="world-label">{s.name}</div></Html>}</group>)}</>;
+  return <>{SPOTS.map(spot => <SpotMarker key={spot.id} spot={spot} active={activeTargetId === spot.id}/>)}</>;
 }
 
 function Lighting() {
