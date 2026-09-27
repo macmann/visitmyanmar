@@ -63,3 +63,37 @@ Security posture: no provider keys reach client code; model output cannot direct
 ### Yangon vertical-slice audit
 
 The reviewed route is Guest House check-in and luggage storage → Tea Shop breakfast and owner clue → Market browse/seller clue → Pagoda Gardens learning and photograph → approximate-area viewpoint search and photograph → Guest House day summary/sleep → bag collection → Bus Station/ticket → persistent travel → Bagan Coming Soon arrival. Check-in, luggage, food, photography, sleep, and travel are distinct canonical interactions; ordinary location arrival and several authored activities were previously primarily exact-marker/interaction steps. Existing saves already tracked discovery strings, foods, photos plus metadata, authored NPC interactions and structured NPC memory, journal timeline entries, quest objectives, and travel state. The former Bagan gate was a collection of day, photo, food, and landmark flags. v0.10 preserves these records, changes the gate to weighted progression (with an explicit legacy-save compatibility path), and retains the working clue/search sequence: Daw Nwe authorizes the market; May authorizes the landmark; the viewpoint is shown only as an approximate search area. Repeated location entry, meals, dialogue, and photographs remain useful experiences but no longer create new progression awards.
+
+# Milestone v0.11 — Yangon Expansion: Districts, Local Transport & Exploration
+
+## Compressed Yangon and district architecture
+
+Yangon is now an intentionally compressed travel-game representation, not a 1:1 GIS simulation or architectural reproduction. Six data-driven `WorldZone`s define bounds, safe spawns, local transport points, locations, discoveries, scoped NPCs, activities, visual themes, time-based ambient hooks, and map metadata: Tamarind Quarter (the preserved prototype neighbourhood), Downtown, Market & Chinatown, Shwedagon Area, Kandawgyi, and Waterfront & Strand. Twenty authored interaction points now span the playable bounds. Sule and Shwedagon visuals and labels explicitly identify their stylized/approximate nature.
+
+## Locations, discoveries, and side journeys
+
+The original Guest House, Tea Shop, Lanmadaw Market, hidden viewpoint, Golden Pagoda Gardens, and Bus Station remain functional and are integrated into the western neighbourhood. New destinations include the Sule city anchor, heritage row, book arcade, Bogyoke market arcade, 19th Street food lane, lantern alley, respectful Shwedagon viewpoint and garden walk, Kandawgyi lake walk/sunset deck/quiet bench, Strand frontage, jetty view, and river frame. The canonical progression catalog adds 11 places, 4 foods, 6 people, 5 stories, 6 deterministic photo challenges, and 3 secrets; existing discovery IDs and award ledgers are preserved. Yangon completion is recalculated against the expanded catalog, so an existing percentage may decrease while earned XP, Score, awards, and discoveries remain intact. Three optional authored journey definitions cover a food trail, photo walk, and local-stories trail; they do not gate Bagan.
+
+## Local transport architecture
+
+Local taxis are separate from intercity persistent travel. The client submits only a discovered district ID and idempotency key. The server owns the route lookup, discovery restriction, fare, time advance, and safe arrival. Local travel remains `EXPLORING`, has no UTC timer and advances 15–20 compressed game minutes. Repeat requests with the same key cannot debit twice. Bagan continues to use the existing persistent `TRAVELLING` action and real UTC completion.
+
+## Streaming, performance, and assets
+
+The player/Rapier controller, camera, store, and global systems remain mounted. A proximity streamer derives loaded districts from zone bounds and mounts only nearby district scenery while interaction definitions remain lightweight data. Modular shared geometry/material patterns, limited lights, graphics-dependent ambient population, and placeholder-first asset status reduce cost. The expanded asset registry categorizes buildings, shopfronts, roads, vegetation, vehicles, street props, market, food, landmarks, NPCs, and signs as TEMP/PLACEHOLDER/FINAL. Developer diagnostics report FPS, draw calls, triangles, textures, geometries, district, loaded zones, nearby POIs, NPC count, coordinates, checkpoint and bounds. Low/Medium/High continue to control pixel ratio, shadows, vegetation and street-life density.
+
+## Existing-save migration and authority
+
+No database reset or destructive migration is used. Load normalization adds only the optional current-location identity required by repeated location types. Valid old coordinates remain valid inside the enlarged bounds; invalid coordinates recover to the established safe default. Accounts, economy, energy, inventory, avatar, luggage, quests, discoveries, photos, stories, NPC memories, XP, Score, achievements, and travel records remain unchanged. Zone streaming never restores a position: Rapier remains live authority, while local transfer and developer teleport are explicit authoritative teleports. The developer field kit includes safe checkpoints for all requested expanded-city destinations.
+
+## Research/content boundary
+
+`docs/yangon-content-sources-v0.11.md` records the compressed-representation boundary, reliable editorial reference set, and static reviewed-sign policy. Dynamic opening hours and prices are not presented as current real-world facts. Worship is not gamified and photography is configured at respectful viewpoints away from sacred structures.
+
+## Validation and performance findings
+
+Automated coverage now checks district completeness, location references, unique discoveries, scoped AI knowledge, safe arrivals, streaming selection, undiscovered-route rejection, exact-once fare debit, game-time advancement, existing-save normalization, progression idempotency, and the unchanged Bagan travel suite. The procedural scene remains intentionally asset-light; final profiling should be repeated when production GLBs, KTX2 textures, and ambient audio ship.
+
+## Known remaining issues
+
+Final art and audio remain placeholders; ferry/boat gameplay is only a future-content jetty foundation. Ambient pedestrians and vehicles use authored lightweight routes, not AI. Provider-backed conversations require configured credentials, while authored fallback remains available. Automated browser tooling is not a product dependency; the release checklist still requires a human accessibility/visual-quality pass on representative mid-range hardware, including the full walking route and repeated zone-boundary crossings.
