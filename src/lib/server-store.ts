@@ -50,3 +50,15 @@ export async function mutatePlayer(id: string, mutate: Mutator): Promise<PlayerS
     return next;
   }, { isolationLevel: 'Serializable' }));
 }
+
+/** Atomically cancels persistent gameplay actions and replaces only game save data. */
+export async function resetJourney(id: string): Promise<PlayerSave> {
+  if (useJsonAdapter()) return serializedJson(() => { const records = readJson(); const next = newPlayer(id); records[id] = next; writeJson(records); return next; });
+  return retrySerializable(async () => (await database()).$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM "Player" WHERE id = ${id} FOR UPDATE`;
+    const next = newPlayer(id);
+    await tx.persistentAction.deleteMany({ where: { playerId: id } });
+    await tx.player.update({ where: { id }, data: { save: next as unknown as Prisma.InputJsonValue } });
+    return next;
+  }, { isolationLevel: 'Serializable' }));
+}

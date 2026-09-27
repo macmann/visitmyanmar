@@ -11,6 +11,7 @@ import { loadSettings } from '@/lib/settings';
 import { attractionStatus } from '@/lib/rules';
 import { interactionTargetAt } from '@/lib/interactions';
 import { useGame } from '@/store/game';
+import { DEFAULT_SPAWN, isSafeWorldPosition, safeSpawn, WORLD_BOUNDS } from '@/content/world';
 
 type BoxDef = { p: [number, number, number]; s: [number, number, number]; color?: string; roof?: string; label?: string };
 const BUILDINGS: BoxDef[] = [
@@ -57,6 +58,20 @@ function Roads() {
     {Array.from({ length: 10 }).map((_, i) => <mesh key={i} position={[0, .1, -31 + i * 7]}><boxGeometry args={[.14, .04, 3.2]}/><meshStandardMaterial color={PALETTE.roadLine}/></mesh>)}
     {Array.from({ length: 10 }).map((_, i) => <mesh key={i} position={[-31 + i * 7, .105, 0]}><boxGeometry args={[3.2, .04, .14]}/><meshStandardMaterial color={PALETTE.roadLine}/></mesh>)}
     {[-3.8, -2.6, -1.4, 1.4, 2.6, 3.8].map(x => <mesh key={x} position={[x, .11, 4.2]}><boxGeometry args={[.7, .04, 2.5]}/><meshStandardMaterial color="#e7e2d1"/></mesh>)}
+  </RigidBody>;
+}
+
+function WorldBoundary() {
+  const { minX, maxX, minZ, maxZ, wallHeight, wallThickness } = WORLD_BOUNDS;
+  const width = maxX - minX, depth = maxZ - minZ, midY = wallHeight / 2;
+  return <RigidBody type="fixed" colliders={false}>
+    <CuboidCollider args={[width / 2, wallHeight / 2, wallThickness / 2]} position={[(minX + maxX) / 2, midY, minZ]}/>
+    <CuboidCollider args={[width / 2, wallHeight / 2, wallThickness / 2]} position={[(minX + maxX) / 2, midY, maxZ]}/>
+    <CuboidCollider args={[wallThickness / 2, wallHeight / 2, depth / 2]} position={[minX, midY, (minZ + maxZ) / 2]}/>
+    <CuboidCollider args={[wallThickness / 2, wallHeight / 2, depth / 2]} position={[maxX, midY, (minZ + maxZ) / 2]}/>
+    {/* Low visible fencing/planting makes the playable edge legible; tall colliders behind it are the final safeguard. */}
+    {[minZ + .45, maxZ - .45].map(z => <group key={z}>{Array.from({ length: 18 }, (_, i) => <mesh key={i} position={[minX + 2 + i * 3.7, .65, z]} castShadow><boxGeometry args={[3.25, 1.3, .35]}/><meshStandardMaterial color={i % 2 ? '#315844' : '#496d4d'}/></mesh>)}</group>)}
+    {[minX + .45, maxX - .45].map(x => <group key={x}>{Array.from({ length: 18 }, (_, i) => <mesh key={i} position={[x, .65, minZ + 2 + i * 3.7]} castShadow><boxGeometry args={[.35, 1.3, 3.25]}/><meshStandardMaterial color={i % 2 ? '#315844' : '#496d4d'}/></mesh>)}</group>)}
   </RigidBody>;
 }
 
@@ -116,8 +131,9 @@ function AvatarVisual({ state }: { state: AnimState }) {
 function Controller() {
   const body = useRef<RapierRigidBody>(null), keys = useRef(new Set<string>()), yaw = useRef(-.6), pitch = useRef(.38), distance = useRef(9), actualDistance = useRef(9), dragging = useRef(false), state = useRef<AnimState>('IDLE');
   const [anim, setAnim] = useState<AnimState>('IDLE');
-  const pos = useGame(s => s.player?.position), setActiveInteractionTarget = useGame(s => s.setActiveInteractionTarget), cameraMode = useGame(s => s.cameraMode);
+  const pos = useGame(s => s.player?.position), setActiveInteractionTarget = useGame(s => s.setActiveInteractionTarget), cameraMode = useGame(s => s.cameraMode), recoveryNonce = useGame(s => s.recoveryNonce), devFallNonce = useGame(s => s.devFallNonce);
   const { camera, gl } = useThree();
+  const seenRecovery = useRef(recoveryNonce), seenFall = useRef(devFallNonce), diagnosticsAt = useRef(0), recovering = useRef(false);
   const velocity = useRef(new THREE.Vector3()), forward = useMemo(() => new THREE.Vector3(), []), right = useMemo(() => new THREE.Vector3(), []);
   useEffect(() => {
     const down = (e: KeyboardEvent) => keys.current.add(e.code), up = (e: KeyboardEvent) => keys.current.delete(e.code);
@@ -127,9 +143,23 @@ function Controller() {
     addEventListener('keydown', down); addEventListener('keyup', up); addEventListener('pointerup', pointerUp); addEventListener('pointermove', move); gl.domElement.addEventListener('pointerdown', pointerDown); gl.domElement.addEventListener('wheel', wheel);
     return () => { removeEventListener('keydown', down); removeEventListener('keyup', up); removeEventListener('pointerup', pointerUp); removeEventListener('pointermove', move); gl.domElement.removeEventListener('pointerdown', pointerDown); gl.domElement.removeEventListener('wheel', wheel); };
   }, [gl]);
+  const recover = (automatic: boolean) => {
+    const b = body.current, player = useGame.getState().player; if (!b || !player || recovering.current) return;
+    recovering.current = true;
+    const target = isSafeWorldPosition(player.lastSafePosition) ? player.lastSafePosition : safeSpawn(player.currentCheckpoint).position;
+    b.setTranslation({ x: target[0], y: Math.max(1.1, target[1]), z: target[2] }, true);
+    b.setLinvel({ x: 0, y: 0, z: 0 }, true); b.setAngvel({ x: 0, y: 0, z: 0 }, true); b.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true);
+    velocity.current.set(0, 0, 0); actualDistance.current = Math.min(distance.current, 6);
+    const focus = new THREE.Vector3(target[0], target[1] + 1.35, target[2]); camera.position.copy(focus).add(new THREE.Vector3(0, 3, 5)); camera.lookAt(focus);
+    player.position = [...target]; useGame.getState().setCameraMode(false); useGame.getState().setNotice(automatic ? 'Returned to a safe location.' : 'Position reset · Journey progress preserved.');
+    setTimeout(() => { recovering.current = false; }, 300);
+  };
+  useEffect(() => { if (seenRecovery.current !== recoveryNonce) { seenRecovery.current = recoveryNonce; recover(false); } }, [recoveryNonce]);
+  useEffect(() => { if (seenFall.current !== devFallNonce && body.current) { seenFall.current = devFallNonce; body.current.setTranslation({ x: 0, y: WORLD_BOUNDS.killY - 2, z: 0 }, true); } }, [devFallNonce]);
   useFrame((_, dt) => {
     const b = body.current; if (!b) return;
     const t = b.translation(), inputX = Number(keys.current.has('KeyD')) - Number(keys.current.has('KeyA')), inputZ = Number(keys.current.has('KeyW')) - Number(keys.current.has('KeyS'));
+    if (t.y < WORLD_BOUNDS.killY) { recover(true); return; }
     forward.set(-Math.sin(yaw.current), 0, -Math.cos(yaw.current)); right.set(Math.cos(yaw.current), 0, -Math.sin(yaw.current));
     const desired = forward.multiplyScalar(inputZ).add(right.multiplyScalar(inputX)); const jogging = keys.current.has('ShiftLeft') || keys.current.has('ShiftRight');
     if (desired.lengthSq()) desired.normalize().multiplyScalar(jogging ? 6.3 : 3.6);
@@ -146,13 +176,15 @@ function Controller() {
     const desiredCamera=focus.clone().addScaledVector(orbit,actualDistance.current); camera.position.lerp(desiredCamera,1-Math.exp(-dt*12));
     const matrix=new THREE.Matrix4().lookAt(camera.position,focus,camera.up), targetRotation=new THREE.Quaternion().setFromRotationMatrix(matrix); camera.quaternion.slerp(targetRotation,1-Math.exp(-dt*16));
     setActiveInteractionTarget(interactionTargetAt([t.x, t.y, t.z]));
+    if (performance.now() - diagnosticsAt.current > 500) { diagnosticsAt.current = performance.now(); const p = useGame.getState().player; if (p) useGame.getState().setWorldDiagnostics({ position: [t.x,t.y,t.z], lastSafe: p.lastSafePosition, checkpoint: p.currentCheckpoint, outOfBounds: t.y < WORLD_BOUNDS.killY || t.x < WORLD_BOUNDS.minX || t.x > WORLD_BOUNDS.maxX || t.z < WORLD_BOUNDS.minZ || t.z > WORLD_BOUNDS.maxZ, grounded: t.y >= .9 && t.y < 1.35 }); }
   });
-  return <RigidBody ref={body} colliders={false} position={pos ?? [-22, 1, 11]} enabledRotations={[false, true, false]} friction={0} linearDamping={1.5} canSleep={false}><CapsuleCollider args={[.65, .38]} position={[0, 1.03, 0]}/><AvatarVisual state={anim}/></RigidBody>;
+  return <RigidBody ref={body} colliders={false} position={pos ?? DEFAULT_SPAWN.position} enabledRotations={[false, true, false]} friction={0} linearDamping={1.5} angularDamping={8} canSleep={false} ccd><CapsuleCollider args={[.65, .38]} position={[0, 1.03, 0]}/><AvatarVisual state={anim}/></RigidBody>;
 }
 
 function PhysicsWorld({ graphics, trees, night }: { graphics: string; trees: number[][]; night: boolean }) {
   return <Physics gravity={[0, -22, 0]}>
     <Roads/>
+    <WorldBoundary/>
     {BUILDINGS.map((b, i) => <Building key={i} b={b}/>)}
     <Pagoda night={night}/>
     <Market/>
