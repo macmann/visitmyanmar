@@ -47,3 +47,19 @@ Security posture: no provider keys reach client code; model output cannot direct
 - Completion now uses the action ID, permits one in-flight reconciliation per travel action, handles explicit `NOT_READY`, retries after 750 ms, backs off after network errors, and offers a manual Retry. The server remains authoritative: it compares its UTC time with `completesAt`, and bootstrap/GET still resolves elapsed sleep and travel actions while the player lock is held.
 - Due travel resolution records a completed action and one `TRAVEL_COMPLETED` event, advances the destination to Bagan, and transitions `TRAVELLING` to the explicit `ARRIVAL` presentation state. Repeated reconciliation returns the same completed save without another event, fare deduction, reward, or timeline entry.
 - Bagan remains intentionally non-playable. Only `ARRIVAL + BAGAN` opens the UI-only **WELCOME TO BAGAN / COMING SOON** presentation; no Bagan world, Canvas, physics, spawn, or NPC module is loaded.
+
+## v0.10 — Explorer Progression
+
+- **Architecture:** server-side reconciliation derives discoveries and an append-only award ledger from canonical save records. PostgreSQL additionally enforces unique `(playerId, sourceType, sourceId)` awards in the same serializable player transaction.
+- **Rewards:** XP drives the centralized level curve; Score is the deterministic, non-repeatable future leaderboard measure. Values live in one reward/discovery catalog. Repeated eating, entry, dialogue, and photos produce no new award.
+- **Achievements:** First Steps, Local Taste, People Person, Yangon Photographer, and Hidden Yangon evaluate canonical collection counts and unlock once.
+- **Destination formula:** journey 40%, places 20%, food 10%, people 10%, stories 5%, photos 10%, secrets 5%.
+- **Bagan:** unlock requires the core Yangon day/sleep milestone plus at least 65% Yangon completion. Existing bus travel and Coming Soon arrival remain unchanged.
+- **Quest design:** the Market is authorized by Daw Nwe's clue, and the hidden viewpoint uses a clue plus approximate search area instead of an exact secret marker. Authored fallback and provider-neutral AI share validated target IDs.
+- **Migration:** the additive `ProgressionAward` migration preserves all saves. Load-time reconciliation backfills safely derivable awards and remains idempotent.
+- **Authority:** client and LLM payloads cannot supply XP or Score. The strict action schema rejects extra/tampered reward fields.
+- **Known remaining issues:** live provider regression requires locally configured credentials; Bagan remains a deliberately scoped Coming Soon arrival; no leaderboard or multiplayer UI is exposed.
+
+### Yangon vertical-slice audit
+
+The reviewed route is Guest House check-in and luggage storage → Tea Shop breakfast and owner clue → Market browse/seller clue → Pagoda Gardens learning and photograph → approximate-area viewpoint search and photograph → Guest House day summary/sleep → bag collection → Bus Station/ticket → persistent travel → Bagan Coming Soon arrival. Check-in, luggage, food, photography, sleep, and travel are distinct canonical interactions; ordinary location arrival and several authored activities were previously primarily exact-marker/interaction steps. Existing saves already tracked discovery strings, foods, photos plus metadata, authored NPC interactions and structured NPC memory, journal timeline entries, quest objectives, and travel state. The former Bagan gate was a collection of day, photo, food, and landmark flags. v0.10 preserves these records, changes the gate to weighted progression (with an explicit legacy-save compatibility path), and retains the working clue/search sequence: Daw Nwe authorizes the market; May authorizes the landmark; the viewpoint is shown only as an approximate search area. Repeated location entry, meals, dialogue, and photographs remain useful experiences but no longer create new progression awards.

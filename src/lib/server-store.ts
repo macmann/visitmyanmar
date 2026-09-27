@@ -45,6 +45,7 @@ export async function mutatePlayer(id: string, mutate: Mutator): Promise<PlayerS
     const record = await tx.player.findUniqueOrThrow({ where: { id } });
     const before = resolveAction(parseSave(record.save)); const next = { ...mutate(before), updatedAt: new Date().toISOString() };
     await tx.player.update({ where: { id }, data: { save: next as unknown as Prisma.InputJsonValue } });
+    if (next.progression?.awards.length) await tx.progressionAward.createMany({ data: next.progression.awards.map(a => ({ playerId:id, sourceType:a.sourceType, sourceId:a.sourceId, xp:a.xp, score:a.score, createdAt:new Date(a.createdAt) })), skipDuplicates:true });
     if (next.activeAction && next.activeAction.id !== before.activeAction?.id) await tx.persistentAction.create({ data: { id: next.activeAction.id, playerId: id, kind: next.activeAction.kind, startedAt: new Date(next.activeAction.startedAt), completesAt: new Date(next.activeAction.completesAt), payload: next.activeAction as unknown as Prisma.InputJsonValue } });
     if (before.activeAction && !next.activeAction) await tx.persistentAction.updateMany({ where: { id: before.activeAction.id, resolvedAt: null }, data: { resolvedAt: new Date() } });
     return next;
@@ -58,6 +59,7 @@ export async function resetJourney(id: string): Promise<PlayerSave> {
     await tx.$queryRaw`SELECT id FROM "Player" WHERE id = ${id} FOR UPDATE`;
     const next = newPlayer(id);
     await tx.persistentAction.deleteMany({ where: { playerId: id } });
+    await tx.progressionAward.deleteMany({ where: { playerId: id } });
     await tx.player.update({ where: { id }, data: { save: next as unknown as Prisma.InputJsonValue } });
     return next;
   }, { isolationLevel: 'Serializable' }));

@@ -6,7 +6,7 @@ import { newPlayer } from './rules';
 
 export const SESSION_COOKIE = 'explore_myanmar_session';
 export const SESSION_DAYS = 30;
-export type Identity = { playerId: string; type: 'GUEST' | 'REGISTERED'; displayName: string; journeyStartedAt: string; email?: string };
+export type Identity = { playerId: string; type: 'GUEST' | 'REGISTERED'; displayName: string; journeyStartedAt: string; email?: string; countryCode?: string };
 export type PublicIdentity = Omit<Identity, 'playerId'>;
 export function publicIdentity({ playerId: _playerId, ...identity }: Identity): PublicIdentity { return identity; }
 
@@ -25,7 +25,7 @@ export async function identityForRequest(request: NextRequest): Promise<Identity
   if (!token) return null;
   const session = await (await db()).session.findUnique({ where: { tokenHash: tokenHash(token) }, include: { player: { include: { user: true } } } });
   if (!session || session.expiresAt <= new Date()) { if (session) await (await db()).session.delete({ where: { id: session.id } }).catch(() => undefined); return null; }
-  return { playerId: session.playerId, type: session.player.user ? 'REGISTERED' : 'GUEST', displayName: session.player.user?.displayName ?? 'Guest Traveler', journeyStartedAt: session.player.createdAt.toISOString(), email: session.player.user?.email };
+  return { playerId: session.playerId, type: session.player.user ? 'REGISTERED' : 'GUEST', displayName: session.player.user?.displayName ?? 'Guest Traveler', journeyStartedAt: session.player.createdAt.toISOString(), email: session.player.user?.email, countryCode: session.player.user?.countryCode ?? undefined };
 }
 
 async function issue(playerId: string) { const token = randomBytes(32).toString('base64url'); await (await db()).session.create({ data: { playerId, tokenHash: tokenHash(token), expiresAt: expiry() } }); return token; }
